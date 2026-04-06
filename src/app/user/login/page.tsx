@@ -61,7 +61,7 @@ const LoginScreen : React.FC = () => {
             회원가입
           </Link>
         </div>
-        <div className="pt-[35px] w-[350px] flex items-center">
+        <div className="pt-[35px] w-[400px] flex items-center">
           <div className="flex-grow border-t border-[#AAAAAA]"/>
           <h1 className="px-4 text-[#AAAAAA] text-[24px]">또는</h1>
           <div className="flex-grow border-t border-[#AAAAAA]"/>

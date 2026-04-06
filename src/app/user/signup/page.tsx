@@ -9,7 +9,7 @@ const signupScreen : React.FC = () => {
 
   return(
     <div className='pt-[50px] items-center flex flex-col bg-white'>
-        <h1 className='w-full max-w-[350px] text-[36px] font-bold text-black mx-10'>
+        <h1 className='w-full max-w-[400px] text-[36px] font-bold text-black mx-10'>
           회원가입
         </h1>
         <div className="w-[340px] pt-[40px] flex flex-col">
