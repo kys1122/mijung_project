@@ -66,12 +66,16 @@ const LoginScreen : React.FC = () => {
           <h1 className="px-4 text-[#AAAAAA] text-[24px]">또는</h1>
           <div className="flex-grow border-t border-[#AAAAAA]"/>
         </div>
-        <span
-          className="pt-[35px] text-[22px] font-medium text-[#515151] select-none"
-          style={{textDecoration: 'underline', textUnderlineOffset: '4px'}}
-        >
-          비회원으로 계속하기
-        </span>
+        <div
+          className="flex items-center">
+          <Link
+            href="/qa"
+            className="pt-[35px] text-[22px] font-medium text-[#515151] select-none"
+            style={{textDecoration: 'underline', textUnderlineOffset: '4px'}}
+          >
+            비회원으로 계속하기
+          </Link>
+        </div>
     </div>
   );
 }
