@@ -1,10 +1,12 @@
 "use client"
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import TopSettings from '../components/TopSettings';
 
 interface ListInterface {
   id: number;
+  url: string;
   title: string;
   description: string;
 }
@@ -13,20 +15,24 @@ interface ListInterface {
 const ListData: ListInterface[] = [
   {
     id: 1,
+    url: "basicLiving",
     title: "국민기초생활수급자증명",
     description: "설명1",
   },
   {
     id: 2,
+    url: "feeReduction",
     title: "요금감면 일괄 신청",
     description: "설명2",
   }
 ];
 
 const ListScreen : React.FC = () => {
+  const router = useRouter();
+
   return (
       <div className="pt-[20px] flex flex-col items-center bg-white">
-        <div className="w-full max-w-[400px]">
+        <div className="w-full max-w-[450px]">
           <h1 className='text-[36px] font-bold text-black'>
               민원 선택
           </h1>
@@ -47,6 +53,7 @@ const ListScreen : React.FC = () => {
               {item.description}
             </p>
             <button
+              onClick={() => router.push(`list/procedure/${item.url}`)}
               className="mt-7 w-full bg-[#009DFF] rounded-[10px] text-white text-[28px] font-bold hover:bg-[#0089e0] active:scale-[0.98] transition-all">
               민원 절차 보기
             </button>

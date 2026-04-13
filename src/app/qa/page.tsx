@@ -124,7 +124,7 @@ export default function QaPage() {
 
   return (
     <div className={`min-h-screen flex flex-col items-center pb-10 transition-colors ${themeClass} relative`}>
-      <div className="w-full max-w-[400px] relative pt-14">
+      <div className="w-full max-w-[450px] relative pt-14">
         <TopSettings lang={lang} setLang={setLang} isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast} isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t} />
         <div className="px-5 mb-8">
           <h1 className={`${isLargeFont ? 'text-[44px]' : 'text-[38px]'} font-bold tracking-tighter`}>{t.title}</h1>
