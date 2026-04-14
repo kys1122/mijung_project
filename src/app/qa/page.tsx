@@ -113,7 +113,7 @@ export default function QaPage() {
     } catch (e) { console.log("서버 제출 오류"); }
     
     localStorage.setItem('final_context', userContext);
-    router.push('/loading');
+    router.push('/list');
   };
 
   const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";

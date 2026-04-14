@@ -3,6 +3,7 @@
 import React, {useState} from "react";
 import {useForm} from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 
 const signupScreen : React.FC = () => {
   const {register, formState:{errors}, watch } = useForm({mode: 'onChange'});
@@ -77,6 +78,16 @@ const signupScreen : React.FC = () => {
           <button className='w-[315px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
             가입하기
           </button>
+        </div>
+        <div
+          className="flex items-center">
+          <Link
+            href="/user/login"
+            className="pt-[10px] text-[20px] text-[#515151] select-none"
+            style={{textDecoration: 'underline', textUnderlineOffset: '4px'}}
+          >
+            로그인
+          </Link>
         </div>
     </div>
   );

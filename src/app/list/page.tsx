@@ -54,7 +54,7 @@ const ListScreen : React.FC = () => {
             </p>
             <button
               onClick={() => router.push(`list/procedure/${item.url}`)}
-              className="mt-7 w-full bg-[#009DFF] rounded-[10px] text-white text-[28px] font-bold hover:bg-[#0089e0] active:scale-[0.98] transition-all">
+              className="mt-7 w-full py-0.3 bg-[#009DFF] rounded-[10px] text-white text-[28px] font-bold hover:bg-[#0089e0] active:scale-[0.98] transition-all">
               민원 절차 보기
             </button>
             </div>
