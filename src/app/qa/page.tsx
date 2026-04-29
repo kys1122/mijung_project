@@ -16,6 +16,33 @@ export default function QaPage() {
   const [modalType, setModalType] = useState<'age' | 'service' | null>(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
+  // --- [추가] 페이지 로드 시 localStorage에서 설정 불러오기 ---
+  useEffect(() => {
+    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
+    const savedContrast = localStorage.getItem('app_contrast') === 'true';
+    const savedFont = localStorage.getItem('app_font') === 'true';
+
+    if (savedLang) setLang(savedLang);
+    if (savedContrast) setIsHighContrast(savedContrast);
+    if (savedFont) setIsLargeFont(savedFont);
+  }, []);
+
+  // --- [추가] 설정 변경 시 localStorage에 저장하는 핸들러 ---
+  const handleLang = (newLang: 'ko' | 'en') => {
+    setLang(newLang);
+    localStorage.setItem('app_lang', newLang);
+  };
+
+  const handleContrast = (val: boolean) => {
+    setIsHighContrast(val);
+    localStorage.setItem('app_contrast', String(val));
+  };
+
+  const handleFont = (val: boolean) => {
+    setIsLargeFont(val);
+    localStorage.setItem('app_font', String(val));
+  };
+
   // --- 음성 녹음 관련 Ref ---
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -43,11 +70,10 @@ export default function QaPage() {
     }
   }[lang] as any;
 
-  // --- [백엔드 통로 1] 페이지 진입 시 세션 복원 (GET) ---
+  // --- 비즈니스 로직 (세션 복원, 음성 인식 등) ---
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        // '/api/v1/questions/session/user_id' 실제 세션 조회 주소로 변경 필요
         const response = await fetch('/api/v1/questions/session/current-user');
         if (response.ok) {
           const data = await response.json();
@@ -58,7 +84,6 @@ export default function QaPage() {
     fetchSession();
   }, []);
 
-  // --- [백엔드 통로 2] 음성 인식 및 AI 전송 (STT) ---
   const handleStartVoice = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -79,7 +104,6 @@ export default function QaPage() {
     const formData = new FormData();
     formData.append('file', blob, 'voice.wav');
     try {
-      // '/api/v1/stt' 실제 백엔드 STT API 주소로 변경 필요
       const response = await fetch('/api/v1/stt', { method: 'POST', body: formData });
       const data = await response.json();
       if (data.text) setSelections(prev => ({ ...prev, detail: data.text }));
@@ -93,7 +117,6 @@ export default function QaPage() {
     }
   };
 
-  // --- [백엔드 통로 3] 데이터 선택 및 최종 제출 ---
   const handleSelect = (category: string, value: string) => {
     setSelections(prev => ({ ...prev, [category]: value }));
     setIsSelectModalOpen(false);
@@ -101,75 +124,122 @@ export default function QaPage() {
 
   const handleSubmit = async () => {
     const userContext = JSON.stringify({ ...selections, lang, submitted_at: new Date().toISOString() });
-    console.log("최종 전송 데이터:", userContext);
-    
     try {
-      // '/api/v1/user-context' 실제 최종 제출 API 주소로 변경 필요
       await fetch('/api/v1/user-context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: userContext
       });
     } catch (e) { console.log("서버 제출 오류"); }
-    
     localStorage.setItem('final_context', userContext);
     router.push('/list');
   };
 
+  // --- 스타일 설정 ---
   const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
-  const cardClass = isHighContrast ? "border-2 border-yellow-400 bg-black" : "border border-gray-300 bg-[#f0f7ff]";
+  const cardClass = isHighContrast ? "border-2 border-white bg-black" : "border border-gray-300 bg-[#f0f7ff]";
   const buttonClass = isHighContrast ? "bg-[#FDC700] text-black" : "bg-[#009DFF] text-white";
   const buttonClass2 = isHighContrast ? "bg-[#FDC700] text-black" : "bg-[#004a99] text-white";
   const fontSizeClass = isLargeFont ? "text-[26px]" : "text-[18px]";
+  const inputClass =  isHighContrast ? "bg-black border-white" : "bg-white border-gray-100";
 
   return (
     <div className={`min-h-screen flex flex-col items-center pb-10 transition-colors ${themeClass} relative`}>
-      <div className="w-full max-w-[450px] relative pt-14">
-        <TopSettings lang={lang} setLang={setLang} isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast} isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t} />
-        <div className="px-5 mb-8">
-          <h1 className={`${isLargeFont ? 'text-[44px]' : 'text-[38px]'} font-bold tracking-tighter`}>{t.title}</h1>
-          <p className={`${isLargeFont ? 'text-[28px]' : 'text-[24px]'} font-bold opacity-90`}>{t.step}</p>
+      {/* 450px 컨테이너 안에서 상단 여백 pt-4로 다른 페이지와 통일 */}
+      <div className="w-full max-w-[450px] px-6 pt-4 relative">
+        
+        {/* TopSettings: 저장 핸들러를 연결하여 설정 유지 */}
+        <TopSettings 
+          lang={lang} setLang={handleLang} 
+          isHighContrast={isHighContrast} setIsHighContrast={handleContrast} 
+          isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
+        />
+        
+        {/* 제목 섹션: 상단 아이콘들과 겹치지 않게 mt-12 적용 */}
+        <div className="mt-12 mb-8">
+          <h1 className={`${isLargeFont ? 'text-[44px]' : 'text-[38px]'} font-bold tracking-tighter`}>
+            {t.title}
+          </h1>
+          <p className={`${isLargeFont ? 'text-[28px]' : 'text-[24px]'} font-bold opacity-90 mt-1`}>
+            {t.step}
+          </p>
         </div>
+
+        {/* 메인 질문 카드 섹션 */}
+        <main className="flex flex-col gap-6 items-center">
+          {/* 유형 선택 카드 */}
+          <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
+            <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q1}</h2>
+            <p className="text-[20px] font-bold mb-4">{t.q1_text}</p>
+            <div className={`p-4 rounded-sm flex flex-col gap-3 mb-6 border ${inputClass}`}>
+              {t.types.map((option: string) => (
+                <label key={option} className="flex items-center gap-3 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="type" 
+                    className={`w-5 h-5 ${isHighContrast ? "accent-[#FDC700]" : "accent-[#009DFF]"}`} 
+                    checked={selections.type === option} 
+                    onChange={() => handleSelect('type', option)} 
+                  />
+                  <span className={`${fontSizeClass} ${isHighContrast ? "text-white" : "text-black"} font-semibold`}>{option}</span>
+                </label>
+              ))}
+            </div>
+            <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>
+              {t.btnVoice}
+            </button>
+          </section>
+
+          {/* 연령 및 서비스 선택 카드 */}
+          {[ {id:'age', q:t.q2, txt:t.q2_text, ph:t.agePlaceholder}, {id:'service', q:t.q3, txt:t.q3_text, ph:t.servicePlaceholder} ].map((item) => (
+            <section key={item.id} className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
+              <h2 className="text-[32px] font-bold mb-1 leading-none">{item.q}</h2>
+              <p className="text-[20px] font-bold mb-4">{item.txt}</p>
+              <input 
+                type="text" 
+                readOnly 
+                placeholder={item.ph} 
+                className={`w-full h-[52px] p-4 rounded-[10px] border mb-5 outline-none ${isHighContrast ? "text-[#ffffff]" : "text-black"} cursor-pointer font-medium ${fontSizeClass} ${inputClass}`} 
+                value={(selections as any)[item.id]} 
+                onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} 
+              />
+              <div className="flex gap-3">
+                <button onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>
+                  {t.btnSelect}
+                </button>
+                <button onClick={handleStartVoice} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>
+                  {t.btnVoice}
+                </button>
+              </div>
+            </section>
+          ))}
+
+          {/* 상황 입력 카드 */}
+          <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
+            <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q4}</h2>
+            <p className="text-[20px] font-bold mb-4">{t.q4_text}</p>
+            <textarea 
+              placeholder={t.textareaPlaceholder} 
+              className={`w-full h-[120px] p-4 rounded-[10px] border mb-5 resize-none outline-none ${isHighContrast ? "text-[#ffffff]" : "text-black"} font-medium ${fontSizeClass} ${inputClass}`} 
+              value={selections.detail} 
+              onChange={(e) => setSelections({...selections, detail: e.target.value})} 
+            />
+            <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>
+              {t.btnVoice}
+            </button>
+          </section>
+
+          {/* 최종 제출 버튼 */}
+          <button 
+            onClick={handleSubmit} 
+            className={`mt-6 w-full max-w-[380px] h-[80px] rounded-[15px] text-[32px] font-bold shadow-xl active:scale-[0.98] transition-all ${buttonClass2}`}
+          >
+            {t.btnSubmit}
+          </button>
+        </main>
       </div>
 
-      <main className="w-full max-w-[360px] flex flex-col gap-5">
-        <section className={`p-6 rounded-md shadow-sm ${cardClass}`}>
-          <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q1}</h2>
-          <p className="text-[20px] font-bold mb-4">{t.q1_text}</p>
-          <div className="bg-white p-4 rounded-sm flex flex-col gap-3 mb-6 border border-gray-100 shadow-inner">
-            {t.types.map((option: string) => (
-              <label key={option} className="flex items-center gap-3 cursor-pointer">
-                <input type="radio" name="type" className="w-5 h-5 accent-[#009DFF]" checked={selections.type === option} onChange={() => handleSelect('type', option)} />
-                <span className={`${fontSizeClass} text-black font-semibold`}>{option}</span>
-              </label>
-            ))}
-          </div>
-          <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>{t.btnVoice}</button>
-        </section>
-
-        {[ {id:'age', q:t.q2, txt:t.q2_text, ph:t.agePlaceholder}, {id:'service', q:t.q3, txt:t.q3_text, ph:t.servicePlaceholder} ].map((item) => (
-          <section key={item.id} className={`p-6 rounded-md shadow-sm ${cardClass}`}>
-            <h2 className="text-[32px] font-bold mb-1 leading-none">{item.q}</h2>
-            <p className="text-[20px] font-bold mb-4">{item.txt}</p>
-            <input type="text" readOnly placeholder={item.ph} className={`w-full h-[52px] p-4 rounded-[10px] border border-gray-200 mb-5 outline-none bg-white text-black cursor-pointer font-medium ${fontSizeClass}`} value={(selections as any)[item.id]} onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} />
-            <div className="flex gap-3">
-              <button onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>{t.btnSelect}</button>
-              <button onClick={handleStartVoice} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>{t.btnVoice}</button>
-            </div>
-          </section>
-        ))}
-
-        <section className={`p-6 rounded-md shadow-sm ${cardClass}`}>
-          <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q4}</h2>
-          <p className="text-[20px] font-bold mb-4">{t.q4_text}</p>
-          <textarea placeholder={t.textareaPlaceholder} className={`w-full h-[120px] p-4 rounded-[10px] border border-gray-200 mb-5 resize-none outline-none bg-white text-black font-medium ${fontSizeClass}`} value={selections.detail} onChange={(e) => setSelections({...selections, detail: e.target.value})} />
-          <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>{t.btnVoice}</button>
-        </section>
-
-        <button onClick={handleSubmit} className={`mt-6 w-full h-[80px] rounded-[15px] text-[32px] font-bold shadow-xl active:scale-[0.98] transition-all ${buttonClass2}`}>{t.btnSubmit}</button>
-      </main>
-
-      {/* 모달 UI 및 음성 모달 (이전과 동일) */}
+      {/* 모달 UI들은 기존과 동일 */}
       {isSelectModalOpen && modalType && (
         <div className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-[200]">
           <div className="w-[85%] max-w-[320px]">

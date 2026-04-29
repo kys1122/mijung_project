@@ -4,6 +4,7 @@ import { Building2, Check, ChevronLeft, ExternalLink, Volume2 } from "lucide-rea
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { TestData } from "@/app/data/testData";
+import DetailModal from "./detailModal";
 
 const DocumentScreen : React.FC = () => {
   const router = useRouter();
@@ -11,6 +12,8 @@ const DocumentScreen : React.FC = () => {
   const id = params.id as string;
 
   const [doc, setDoc] = useState<any[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
   //id에 맞는 데이터 연결, 없는 id면 데이터 없음을 안내
   useEffect(()=>{
@@ -29,6 +32,11 @@ const DocumentScreen : React.FC = () => {
   const Complete =  (docId: number) => {
       setDoc(doc.map(d => d.id == docId ? {...d, isCompleted: !d.isCompleted} : d));
   }
+
+  const handleOpenDetail = (docItem: any) => {
+    setSelectedDoc(docItem);
+    setModalOpen(true);
+  };
 
   return(
     <div className="flex flex-col items-center bg-white">
@@ -76,10 +84,16 @@ const DocumentScreen : React.FC = () => {
               <p className={`mx-2.5 text-[20px] ${doc.isCompleted ? 'text-[#858585]' : 'text-black'}`}>{doc.institution}</p>
               <div className="flex flex-col">
                 <button
+                  onClick={() => handleOpenDetail(doc)}
                   className="mb-2 mx-2.5 mt-6 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white text-[22px] font-bold"
                 >
                   자세히보기
                 </button>
+                <DetailModal 
+                  isOpen={modalOpen} 
+                  onClose={() => setModalOpen(false)} 
+                  data={selectedDoc} 
+                />
                 <button
                   onClick={() => Complete(doc.id)}
                   className="mt-4 flex items-center"
@@ -95,7 +109,6 @@ const DocumentScreen : React.FC = () => {
 
         </div>
       </div>
-
     </div>
   )
 }
