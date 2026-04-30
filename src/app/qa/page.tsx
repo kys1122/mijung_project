@@ -220,7 +220,7 @@ export default function QaPage() {
             <p className="text-[20px] font-bold mb-4">{t.q4_text}</p>
             <textarea 
               placeholder={t.textareaPlaceholder} 
-              className={`w-full h-[120px] p-4 rounded-[10px] border mb-5 resize-none outline-none ${isHighContrast ? "text-[#ffffff]" : "text-black"} font-medium ${fontSizeClass} ${inputClass}`} 
+              className={`w-full h-[120px] p-4 rounded-[10px] border mb-5 resize-none outline-none ${isHighContrast ? "text-white" : "text-black"} font-medium ${fontSizeClass} ${inputClass}`} 
               value={selections.detail} 
               onChange={(e) => setSelections({...selections, detail: e.target.value})} 
             />

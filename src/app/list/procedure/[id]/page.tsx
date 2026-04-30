@@ -75,12 +75,12 @@ const ProcedureScreen : React.FC = () => {
             lang={lang} setLang={handleLang} 
             isHighContrast={isHighContrast} setIsHighContrast={handleContrast} 
             isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
-            />
+          />
         </header>
 
         <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'ko' ? currentProcedure.name : currentProcedure.nameEn}</h1>
         
-        <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 ${isHighContrast ? 'bg-zinc-900 border border-[#ffd000]' : 'bg-[#E9F1FF]'} rounded-[15px]`}>
+        <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 ${isHighContrast ? 'bg-zinc-800 border-2 border-[#ffd000]' : 'bg-[#E9F1FF]'} rounded-[15px]`}>
           <span className={`text-center ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} font-bold block`}>{t.progress}</span>
           <span className={`w-full text-right ${isLargeFont ? 'text-[22px]' : 'text-[18px]'} block -mt-3`}>{completedCount}/{step.length}</span>
           <div className="w-full h-4 bg-white rounded-[20px]">
@@ -92,7 +92,7 @@ const ProcedureScreen : React.FC = () => {
         <div className="flex justify-end">
           <button 
             onClick={() => router.push(`/list/document/${id}`)}
-            className={`mt-[15px] p-[5px] px-[15px] flex items-center border-3 rounded-[15px] ${isHighContrast ? 'border-[#ffd000]' : 'border-[#0044FF] bg-white'} ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-semibold`}
+            className={`mt-[15px] p-[5px] px-[15px] flex items-center border-3 rounded-[15px] text-black ${isHighContrast ? 'border-[#ffd000] bg-[#ffd000]' : 'border-[#0044FF] bg-white'} ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-semibold`}
           >
             {t.docs}
           </button>
@@ -111,22 +111,22 @@ const ProcedureScreen : React.FC = () => {
                   {step.link && (
                     <button className="mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white text-[22px] font-bold">
                       <ExternalLink className="w-5 h-5"/>
-                      사이트 바로가기
+                      {t.web}
                     </button>
                   )}
                   <button className="mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] text-[23px] font-bold text-black">
                     <Volume2 className="w-7 h-7"/>
-                    음성으로 듣기
+                    {t.voice}
                   </button>
 
                   <button
                     onClick={() => Complete(step.id)}
                     className="mt-7 flex items-center"
                   >
-                    <div className={`w-9 h-9 flex items-center justify-center ${isHighContrast ? (step.isCompleted ? 'bg-[#ffd000]' : 'bg-black border border-white') : (step.isCompleted ? 'bg-[#00E404]' : 'bg-[#F1F1F1]')}`}>
+                    <div className={`w-9 h-9 flex items-center justify-center ${isHighContrast ? (step.isCompleted ? 'bg-[#ffd000]' : 'bg-[#F1F1F1]') : (step.isCompleted ? 'bg-[#00E404]' : 'bg-[#F1F1F1]')}`}>
                       {step.isCompleted && <Check className="text-white w-7 h-7"/>}
                     </div>
-                    <span className={`ml-2 text-[24px] font-bold ${textClass}`}>완료</span>
+                    <span className={`ml-2 text-[24px] font-bold ${textClass}`}>{t.done}</span>
                   </button>
                 </div>
               </div>
