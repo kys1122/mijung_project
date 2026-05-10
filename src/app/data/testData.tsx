@@ -1,15 +1,15 @@
 export interface Document {
-    id: number;
-    title: string;
-    description: string;
-    institution: string;
-    isCompleted: boolean;
-    detail?: {
-      online?: {name: string, link?: string};
-      offline?: string;
-      requirements: string[];
-      warning?: string;
-    }
+  id: number;
+  title: string;
+  description: string;
+  institution: string;
+  isCompleted: boolean;
+  detail?: {
+    online?: {name: string, link?: string};
+    offline?: string;
+    requirements: string[];
+    warning?: string;
+  }
 }
 
 export interface Step {

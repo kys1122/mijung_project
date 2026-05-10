@@ -3,10 +3,41 @@
 import React, {useState} from "react"
 import Link from "next/link";
 import {Eye, EyeOff ,Check} from 'lucide-react';
+import { useRouter } from "next/navigation";
 
 const LoginScreen : React.FC = () => {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [stayLogin,  setStayLogin] = useState(false);
   const [showPw, setShowPw] = useState(false);
+
+  //백엔드 연동
+  const handleLogin = async () => {
+    const apiURL = process.env.NEXT_PUBLIC_API_URL;
+
+    try{
+      const response = await fetch(`${apiURL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({email, password}),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        localStorage.setItem('accessToken', result.data.accessToken);
+        localStorage.setItem('refreshToken', result.data.refreshToken);
+
+        router.push("/list");
+      }
+    } catch(error) {
+      console.error("로그인 중 에러 발생 : ", error);
+    }
+  }
 
   return(
       <div className='pt-[110px] flex flex-col items-center justify-between bg-white'>
@@ -18,12 +49,16 @@ const LoginScreen : React.FC = () => {
             className="px-5 py-3 border border-[#000000] rounded-[10px] focus:outline-none focus:border-[#0059FF] text-[22px] text-black"
             type="email"
             placeholder="이메일 입력"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <div className="relative">
             <input
               className="px-5 py-3 border border-[#000000] rounded-[10px] focus:outline-none focus:border-[#0059FF] text-[22px] text-black"
               type={showPw ? "text" : "password"}
               placeholder="비밀번호 입력"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
             <div
               onClick={() => setShowPw(!showPw)}
@@ -47,7 +82,9 @@ const LoginScreen : React.FC = () => {
           </span>
         </div>
         <div className='flex flex-col items-center mt-10'>
-          <button className='w-[306px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
+          <button
+            onClick={handleLogin}
+            className='w-[306px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
             로그인하기
           </button>
         </div>

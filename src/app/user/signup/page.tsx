@@ -4,6 +4,14 @@ import React, {useState} from "react";
 import {useForm} from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import axios from "axios";
+
+export const instance = axios.create({
+  baseURL: "<http://localhost:3001>",
+  headers: {
+    "Content-Type" : "application/json",
+  },
+})
 
 const signupScreen : React.FC = () => {
   const {register, formState:{errors}, watch } = useForm({mode: 'onChange'});
