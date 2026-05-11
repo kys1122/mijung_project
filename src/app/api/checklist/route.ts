@@ -1,0 +1,117 @@
+import { NextResponse } from 'next/server';
+import { executeQuery } from '@/lib/database'; 
+
+//  URL에서 괄호, 공백, 한글을 제거하고 순수 주소만 추출하는 안전장치 함수
+const getPureLink = (rawLink: string | null) => {
+    if (!rawLink) return null;
+    // 정규식 설명: 괄호(), 공백(\s), 한글을 모두 제거
+    let clean = rawLink.replace(/[()\sㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, "").trim();
+    
+    // 만약 주소가 www로 시작하면 https://
+    if (clean && !clean.startsWith('http')) {
+        clean = `https://${clean}`;
+    }
+    return clean;
+};
+
+export async function GET(request: Request) {
+    try {
+        const {searchParams} = new URL(request.url);
+        const service_id = searchParams.get('service_id');
+        const userId = searchParams.get('userId') || 'temp_user';
+
+        const serviceSQL = `
+            SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps 
+            FROM services s
+            JOIN service_sources ss ON s.id = ss.service_id
+            WHERE s.id = ?`;
+
+        const serviceRows = await executeQuery(serviceSQL, [service_id]);
+
+        if (serviceRows.length === 0) return NextResponse.json({ message: "Data not found" }, {status: 404});
+        const data = serviceRows[0];
+
+        const progressSql = 
+            `SELECT item_id FROM checklist_progress WHERE user_id = ? AND service_id = ?`;
+        const progressRows = await executeQuery(progressSql, [userId,  service_id]);
+        const completedItems = progressRows.map((p:any) => p.item_id);
+
+        // getPureLink 함수를 적용하여 링크 정제
+        const steps = [
+            {
+                id: 1,
+                title: "신청 자격 확인하기",
+                description: data.eligibility ? data.eligibility.split('\n')[0] : "자격 요건을 확인하세요.",
+                isCompleted: completedItems.includes("step_1"),
+                link: getPureLink(data.official_link_method) 
+            },
+            {
+                id: 2,
+                title: "신청 접수 진행",
+                description: data.application_steps || "접수처를 확인하세요.",
+                isCompleted: completedItems.includes("step_2"),
+                link: getPureLink(data.online_method) 
+            }
+        ];
+
+        const docRegex = /\((\d+)\)\s*([^(\n<]+)/g;
+        let match;
+        const documents = [];
+        const docSource = data.raw_required_docs || "";
+
+        while ((match = docRegex.exec(docSource)) !== null) {
+            const docId = parseInt(match[1]);
+            const docTitle = match[2].trim();
+            
+            if (docTitle.includes("공무원확인") || docTitle.includes("소득 재산 확인")) continue;
+
+            let description = `${docTitle} 서류입니다.`;
+            let reqs = ["본인 확인 서류"];
+            let warning = null;
+            let offlineLoc = "읍면동 행정복지센터(주민센터)";
+
+            if (docTitle.includes("신분증")) {
+                description = "본인 확인을 위해 필요한 신원 증명 서류입니다.";
+                reqs = ["주민등록증", "운전면허증", "여권 중 하나"];
+            } else if (docTitle.includes("신고서") || docTitle.includes("신청서")) {
+                description = "기초연금 신청 및 자격 심사를 위한 서류입니다.";
+                reqs = ["신청서 양식 (주민센터 비치)"];
+            } else if (docTitle.includes("금융정보")) {
+                description = "본인 및 배우자의 금융 자산을 확인하기 위한 동의서입니다.";
+                reqs = ["본인 및 배우자 서명(인감)"];
+                warning = "배우자가 있는 경우 반드시 배우자의 동의 서명이 포함되어야 합니다.";
+            } else if (docTitle.includes("통장 사본")) {
+                description = "연금을 지급받을 본인 명의의 계좌 확인용 서류입니다.";
+                reqs = ["본인 명의의 통장"];
+                offlineLoc = "은행 영업점 또는 주민센터";
+            }
+
+            documents.push({
+                id: docId,
+                title: docTitle,
+                description: description,
+                institution: data.application_steps.includes("주민센터") ? "주민센터, 복지로" : "해당 기관",
+                isCompleted: completedItems.includes(`doc_${docId}`),
+                detail: {
+                    // getPureLink 함수를 적용하여 링크 정제
+                    online: data.online_method ? { name: "복지로", link: getPureLink(data.online_method) } : null,
+                    offline: offlineLoc,
+                    requirements: reqs,
+                    warning: warning
+                }
+            });
+        }
+
+        return NextResponse.json({
+            id: data.id,
+            name: data.service_name,
+            nameEn: "Basic Pension", 
+            steps: steps,
+            documents: documents
+        }, {status: 200});
+
+    } catch (error) {
+        console.error("체크리스트 조회 오류:", error);
+        return NextResponse.json({ error: "Server Error" }, {status: 500});
+    }
+};

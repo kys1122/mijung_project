@@ -3,7 +3,6 @@
 import { Check, ChevronLeft, ExternalLink, Volume2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { TestData } from "@/app/data/testData";
 import TopSettings from "../../../components/TopSettings";
 
 const ProcedureScreen : React.FC = () => {
@@ -12,6 +11,8 @@ const ProcedureScreen : React.FC = () => {
   const id = params.id as string;
 
   const [step, setStep] = useState<any[]>([]);
+  const [serviceName, setServiceName] = useState({ ko: "", en: "" });
+  const [loading, setLoading] = useState(true);
 
   //모드
   const [lang, setLang] = useState<'ko' | 'en'>('ko');
@@ -31,24 +32,37 @@ const ProcedureScreen : React.FC = () => {
   const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
   const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
-  //id에 맞는 데이터 연결, 없는 id면 데이터 없음을 안내
-  useEffect(()=>{
-    if(id && TestData[id]){
-      setStep(TestData[id].step);
-    } else {
-      setStep(TestData["nothingData"].step);
-    }
-  },  [id]);
+    // --- 실제 백엔드 데이터 연결 ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/checklist?service_id=${id}&userId=temp_user`);
+        const data = await res.json();
+        
+        // 백엔드 구조에 맞춰 데이터 세팅
+        setStep(data.steps || []);
+        setServiceName({ 
+          ko: data.name, 
+          en: data.nameEn || data.name // 영어 이름이 없으면 한글 이름으로 대체
+        });
+      } catch (err) {
+        console.error("데이터 로드 실패:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) fetchData();
+  }, [id]);
 
-  //진행률 계산
-  const currentProcedure = TestData[id] || TestData["nothingData"];
-  const completedCount = step.filter((s:any) =>  s.isCompleted).length;
-  const progress = (completedCount/step.length) * 100;
+  // 진행률 계산 (백엔드에서 가져온 step 배열 기준)
+  const completedCount = step.filter((s:any) => s.isCompleted).length;
+  const progress = step.length > 0 ? (completedCount / step.length) * 100 : 0;
 
-  //완료 상태
-  const Complete =  (stepId: number) => {
+  // 완료 상태 토글 (UI 즉시 반영)
+  const Complete = (stepId: number) => {
     setStep(step.map((s: any) => s.id == stepId ? {...s, isCompleted: !s.isCompleted} : s));
-  }
+  };
 
   const t = {
     ko: { back: "민원 선택으로", progress: "진행률", docs: "필요한 서류 보기", web: "사이트 바로가기", voice: "음성으로 듣기", done: "완료", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드" },
@@ -59,6 +73,8 @@ const ProcedureScreen : React.FC = () => {
   const themeClass2 = isHighContrast ? "bg-black text-white" : "bg-white text-black";
   const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
   const textClass = isHighContrast ? 'text-white' : 'text-black'
+
+  if (loading) return <div className={`min-h-screen flex items-center justify-center ${themeClass2}`}>로딩 중...</div>;
 
   return(
     <div className={`min-h-screen flex flex-col items-center ${themeClass2}`}>
@@ -78,7 +94,7 @@ const ProcedureScreen : React.FC = () => {
           />
         </header>
 
-        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'ko' ? currentProcedure.name : currentProcedure.nameEn}</h1>
+        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'ko' ? serviceName.ko : serviceName.en}</h1>
         
         <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 ${isHighContrast ? 'bg-zinc-800 border-2 border-[#ffd000]' : 'bg-[#E9F1FF]'} rounded-[15px]`}>
           <span className={`text-center ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} font-bold block`}>{t.progress}</span>
@@ -109,7 +125,12 @@ const ProcedureScreen : React.FC = () => {
                 <p className={`px-3 mb-11 text-[22px] ${textClass}`}>{step.description}</p>
                 <div className="flex flex-col">
                   {step.link && (
-                    <button className="mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white text-[22px] font-bold">
+                    <button
+                      onClick={() => {
+                        const url = step.link.startsWith('http') ? step.link : `https://${step.link}`;
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white text-[22px] font-bold">
                       <ExternalLink className="w-5 h-5"/>
                       {t.web}
                     </button>

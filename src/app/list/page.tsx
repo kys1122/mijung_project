@@ -13,18 +13,17 @@ interface ListInterface {
 
 const ListScreen : React.FC = () => {
   const [listData, setListData] = useState<ListInterface[]>([]);
-  const apiURL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(()=> {
     const getListData = async() => {
       try{
-        const response = await fetch(`${apiURL}/api/v1/documents/1`);
+        const response = await fetch(`/api/documents/1`);
         const result = await response.json();
 
         if(result.success && Array.isArray(result.data)){
           const mappedData: ListInterface[] = result.data.map((item: any) => ({
             id: item.id,
-            url: `/list/document/${item.id}`,
+            url: item.id.toString(),
             title: {
               ko: item.doc_name,
               en: item.doc_name
@@ -42,10 +41,10 @@ const ListScreen : React.FC = () => {
         console.error("데이터 로드 실패 : ", error);
       }
     };
-    if (apiURL) {
-      getListData();
-    }
-  },[apiURL]);
+
+    getListData();
+
+  },[]);
 
   const router = useRouter();
 
@@ -106,7 +105,7 @@ const ListScreen : React.FC = () => {
                 {item.description[lang]}
               </p>
               <button
-                onClick={() => router.push(`list/procedure/${item.url}`)}
+                onClick={() => router.push(`/list/procedure/${item.url}`)}
                 className={`mt-7 w-full py-0.5 rounded-[10px] ${buttonClass} ${isLargeFont ? "text-[32px]" : "text-[28px]"} font-bold active:scale-[0.98] transition-all`}>
                 {t.btn}
               </button>
