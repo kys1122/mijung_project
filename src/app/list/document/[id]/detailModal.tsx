@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React from "react";
 import { AlertCircle, Building2, FileText, X } from "lucide-react";
@@ -10,8 +10,10 @@ interface DetailModalProps {
 }
 
 const DetailModal = ({ isOpen, onClose, data }: DetailModalProps) => {
+  // 모달이 닫혀있거나 전달된 실시간 데이터가 없으면 탈출
   if (!isOpen || !data) return null;
 
+  // 백엔드에서 내려준 세부 파싱 객체 (online, offline, requirements, warning)
   const detail = data.detail;
 
   return (

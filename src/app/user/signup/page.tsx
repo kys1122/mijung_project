@@ -22,10 +22,8 @@ const signupScreen : React.FC = () => {
   const passwordRegex = /.{8,}/; //8글자 이상
 
   const onSubmit = async(data:any) => {
-    const apiURL = process.env.NEXT_PUBLIC_API_URL
-    
     try{
-      const response = await fetch(`${apiURL}/api/v1/auth/register`, {
+      const response = await fetch(`/api/auth/register`, {
         method: 'POST',
         headers: {'Content-Type' : 'application/json'},
         body: JSON.stringify({

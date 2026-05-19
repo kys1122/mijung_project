@@ -4,20 +4,21 @@ import { executeQuery } from '@/lib/database';
 //  URL에서 괄호, 공백, 한글을 제거하고 순수 주소만 추출하는 안전장치 함수
 const getPureLink = (rawLink: string | null) => {
     if (!rawLink) return null;
-    // 정규식 설명: 괄호(), 공백(\s), 한글을 모두 제거
+
     let clean = rawLink.replace(/[()\sㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, "").trim();
     
-    // 만약 주소가 www로 시작하면 https://
     if (clean && !clean.startsWith('http')) {
         clean = `https://${clean}`;
     }
     return clean;
 };
 
-export async function GET(request: Request) {
+export async function GET(request : Request, {params} : {params: Promise<{service_id: string}>}) {
     try {
+        const resolvedParams = await params;
+        const service_id = resolvedParams.service_id;
+
         const {searchParams} = new URL(request.url);
-        const service_id = searchParams.get('service_id');
         const userId = searchParams.get('userId') || 'temp_user';
 
         const serviceSQL = `
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
 
         const serviceRows = await executeQuery(serviceSQL, [service_id]);
 
-        if (serviceRows.length === 0) return NextResponse.json({ message: "Data not found" }, {status: 404});
+        if (!serviceRows || serviceRows.length === 0) return NextResponse.json({ message: "Data not found" }, {status: 404});
         const data = serviceRows[0];
 
         const progressSql = 
@@ -90,10 +91,9 @@ export async function GET(request: Request) {
                 id: docId,
                 title: docTitle,
                 description: description,
-                institution: data.application_steps.includes("주민센터") ? "주민센터, 복지로" : "해당 기관",
+                institution: data.application_steps && data.application_steps.includes("주민센터") ? "주민센터, 복지로" : "해당 기관",
                 isCompleted: completedItems.includes(`doc_${docId}`),
                 detail: {
-                    // getPureLink 함수를 적용하여 링크 정제
                     online: data.online_method ? { name: "복지로", link: getPureLink(data.online_method) } : null,
                     offline: offlineLoc,
                     requirements: reqs,
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
             name: data.service_name,
             nameEn: "Basic Pension", 
             steps: steps,
-            documents: documents
+            document: documents
         }, {status: 200});
 
     } catch (error) {

@@ -232,7 +232,7 @@ export default function QaPage() {
           {/* 최종 제출 버튼 */}
           <button 
             onClick={handleSubmit} 
-            className={`mt-6 w-full max-w-[380px] h-[80px] rounded-[15px] text-[32px] font-bold shadow-xl active:scale-[0.98] transition-all ${buttonClass2}`}
+            className={`mt-8 w-full max-w-[380px] h-[75px] rounded-[10px] text-[32px] font-bold shadow-xl active:scale-[0.98] transition-all ${buttonClass2}`}
           >
             {t.btnSubmit}
           </button>
@@ -242,17 +242,17 @@ export default function QaPage() {
       {/* 모달 UI들은 기존과 동일 */}
       {isSelectModalOpen && modalType && (
         <div className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-[200]">
-          <div className="w-[85%] max-w-[320px]">
-            <div className="bg-white border-2 border-gray-400 overflow-hidden shadow-2xl rounded-[10px]">
+          <div className="w-[85%] max-w-[350px]">
+            <div className="bg-white border-2 border-gray-400 overflow-hidden shadow-2xl rounded-[20px]">
               <div className="p-5 text-center font-bold text-[24px] border-b-2 border-gray-300 text-black">{modalType === 'age' ? t.modalAge : t.modalService}</div>
-              <ul className="max-h-[300px] overflow-y-auto">
+              <ul className="max-h-[270px] overflow-y-auto">
                 {t.options[modalType].map((item: string) => (
-                  <li key={item} onClick={() => handleSelect(modalType, item)} className="p-5 text-center border-b border-gray-200 text-[22px] text-black active:bg-gray-100 cursor-pointer font-medium">{item}</li>
+                  <li key={item} onClick={() => handleSelect(modalType, item)} className="p-4 text-center border-b border-gray-200 text-[22px] text-black active:bg-gray-100 cursor-pointer font-medium">{item}</li>
                 ))}
               </ul>
             </div>
-            <div className="mt-5 flex justify-center">
-              <button onClick={() => setIsSelectModalOpen(false)} className="w-[120px] h-[60px] bg-[#D9D9D9] border-2 border-gray-400 text-[24px] font-bold text-black rounded-[7px] shadow-sm">{t.cancel}</button>
+            <div className="mt-2 flex justify-center">
+              <button onClick={() => setIsSelectModalOpen(false)} className="w-[200px] h-[60px] bg-white border-2 border-gray-400 text-[24px] font-bold text-black rounded-[7px] shadow-sm">{t.cancel}</button>
             </div>
           </div>
         </div>

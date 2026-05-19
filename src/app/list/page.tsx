@@ -93,11 +93,11 @@ const ListScreen : React.FC = () => {
             {t.sub}
         </p>
 
-        <div className="pt-20 w-full max-w-[350px] flex flex-col gap-6">
+        <div className="pt-20 w-full max-w-[450px] flex flex-col items-center gap-10">
           {listData.map((item)=>(
             <div
               key={item.id}
-              className={`p-4 border-2 border-[#C4C4C4] rounded-[11px] bg-[#F7F7F7] flex flex-col items-center ${cardClass}`}>
+              className={`p-4 mx-10 border-2 border-[#C4C4C4] rounded-[11px] bg-[#F7F7F7] flex flex-col items-center ${cardClass}`}>
               <h2 className={`${isLargeFont ? "text-[34px]" : "text-[30px]"} font-bold text-center`}>
                 {item.title[lang]}
               </h2>

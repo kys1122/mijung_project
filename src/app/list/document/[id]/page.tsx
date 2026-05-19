@@ -1,70 +1,81 @@
-"use client"
+"use client";
 
-import { Building2, Check, ChevronLeft, ExternalLink, Volume2 } from "lucide-react";
+import { Building2, Check, ChevronLeft } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { TestData } from "@/app/data/testData";
-import DetailModal from "./detailModal";
+import DetailModal from "./detailModal"; 
 import TopSettings from "@/app/components/TopSettings";
+import axios from "axios";
 
-const DocumentScreen : React.FC = () => {
+const DocumentScreen: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
 
-  const [doc, setDoc] = useState<any[]>([]);
+  const [doc, setDoc] = useState<any[]>([]); // 
+  const [pageTitle, setPageTitle] = useState<string>(""); // 실시간 민원명을 담을 상태
+
+  // ---  백엔드 실시간 API 데이터 로딩  ---
+  useEffect(() => {
+    const fetchRequiredDocs = async () => {
+      if (!id) return;
+      try {
+        // 백엔드 실제 엔드포인트 주소 호출
+        const response = await axios.get(`http://localhost:3000/api/required-docs/${id}`);
+        
+        if (response.data) {
+          setDoc(response.data.document || []);       // 백엔드가 준 서류 배열 세팅
+          setPageTitle(response.data.title || "");    // 백엔드가 준 민원 제목 세팅
+        }
+      } catch (error) {
+        console.error("백엔드 데이터 호출 실패:", error);
+        setDoc([]);
+      }
+    };
+
+    fetchRequiredDocs();
+  }, [id]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
-  //id에 맞는 데이터 연결, 없는 id면 데이터 없음을 안내
-  useEffect(()=>{
-  if(id && TestData[id]){
-      setDoc(TestData[id].document);
-  } else {
-      setDoc(TestData["nothingData"].document);
-  }
-  }, [id]);
+  const completedCount = doc.filter((d) => d.isCompleted).length;
 
-  //진행 상황 계산
-  const currentData = TestData[id] || TestData["nothingData"];
-  const completedCount = doc.filter(d =>  d.isCompleted).length;
-
-  //완료 상태
-  const Complete =  (docId: number) => {
-      setDoc(doc.map(d => d.id == docId ? {...d, isCompleted: !d.isCompleted} : d));
-  }
+  const Complete = (docId: number) => {
+    setDoc(doc.map((d) => (d.id == docId ? { ...d, isCompleted: !d.isCompleted } : d)));
+  };
 
   const handleOpenDetail = (docItem: any) => {
     setSelectedDoc(docItem);
     setModalOpen(true);
   };
-  
-  //모드
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+
+  const [lang, setLang] = useState<"ko" | "en">("ko");
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
+  // --- 2. 로컬 스토리지 UI 설정 로딩 ---
   useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
+    const savedLang = localStorage.getItem("app_lang") as "ko" | "en";
+    const savedContrast = localStorage.getItem("app_contrast") === "true";
+    const savedFont = localStorage.getItem("app_font") === "true";
     if (savedLang) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
-  const handleLang = (newLang: 'ko' | 'en') => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  const handleLang = (newLang: "ko" | "en") => { setLang(newLang); localStorage.setItem("app_lang", newLang); };
+  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem("app_contrast", String(val)); };
+  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem("app_font", String(val)); };
 
   const t = {
-    ko: { back: "민원 절차 화면으로", docs: "필요한 서류 보기", need: "필요 서류", read: "자세히보기", voice: "음성으로 듣기", done: "완료", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드" },
-    en: { back: "Back", docs: "Required Docs", need: "required documents", read: "Read more" ,voice: "Listen", done: "Done", langText: "KO/EN", highContrast: "Contrast", largeFont: "Big Font" }
+    ko: { back: "민원 절차 화면으로", docs: pageTitle || "필요한 서류 보기", need: "필요 서류", read: "자세히보기", done: "완료" },
+    en: { back: "Back", docs: "Required Docs", need: "required documents", read: "Read more", done: "Done" },
   }[lang] as any;
 
   const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
   const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
-  const textClass = isHighContrast ? 'text-white' : 'text-black'
+  const textClass = isHighContrast ? "text-white" : "text-black";
 
   return(
     <div className={`flex flex-col items-center ${themeClass}`}>
@@ -89,7 +100,7 @@ const DocumentScreen : React.FC = () => {
           <div className="flex flex-col">
             {doc.map((doc) => (
               <div key={doc.id} className="flex items-center">
-                <div className="w-6 h-6 items-center justify-center border border-black rounded-full bg-white">
+                <div className="w-6 h-6 flex shrink-0 items-center justify-center border border-black rounded-full bg-white">
                   {doc.isCompleted && <Check className="w-5.5 h-5.5 text-black"/>}
                 </div>
                 <span className={`ml-1.5 ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-medium ${isHighContrast ? (doc.isCompleted ? 'text-[#8d8d8d] line-through' : 'text-white') : (doc.isCompleted ? 'text-[#B3B3B3] line-through' : 'text-black')}`}>

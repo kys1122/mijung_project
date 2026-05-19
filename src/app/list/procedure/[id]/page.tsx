@@ -37,7 +37,7 @@ const ProcedureScreen : React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/checklist?service_id=${id}&userId=temp_user`);
+        const res = await fetch(`/api/checklist/${id}?userId=temp_user`);
         const data = await res.json();
         
         // 백엔드 구조에 맞춰 데이터 세팅
@@ -117,12 +117,12 @@ const ProcedureScreen : React.FC = () => {
         <div className="flex flex-col gap-10 p-5 mt-15">
           {step.map((step:any) => (
             <div key={step.id} className="relative">
-              <div className={`absolute -top-4 -left-2 w-13 h-13 flex items-center justify-center rounded-full ${isHighContrast ? "text-black" : "text-white"} font-bold text-[36px] ${isHighContrast ? (step.isCompleted ? 'bg-[#ffc200]' : 'bg-white') : (step.isCompleted ? 'bg-[#00CA22]' : 'bg-[#009DFF]')}`}>
+              <div className={`absolute -top-4 -left-2 w-13 h-13 flex items-center justify-center rounded-full ${isHighContrast ? "text-black" : "text-white"} font-bold ${isLargeFont ? 'text-[40px]' : 'text-[36px]'} ${isHighContrast ? (step.isCompleted ? 'bg-[#ffc200]' : 'bg-white') : (step.isCompleted ? 'bg-[#00CA22]' : 'bg-[#009DFF]')}`}>
                 {step.id}
               </div>
               <div className={`p-5 pt-8 border-2 rounded-[10px] ${isHighContrast ? (step.isCompleted ? 'border-[#ffdf7e] bg-black' : 'border-white bg-black') : (step.isCompleted ? 'border-[#009C27] bg-[#F4FFF6]' : 'border-[#C9C9C9] bg-white')}`}>
-                <h2 className={`mb-4 text-[28px] font-bold ${textClass}`}>{step.title}</h2>
-                <p className={`px-3 mb-11 text-[22px] ${textClass}`}>{step.description}</p>
+                <h2 className={`mb-4 ${isLargeFont ? 'text-[32px]' : 'text-[28px]'} font-bold ${textClass}`}>{step.title}</h2>
+                <p className={`px-3 mb-11 ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} ${textClass}`}>{step.description}</p>
                 <div className="flex flex-col">
                   {step.link && (
                     <button
@@ -130,12 +130,12 @@ const ProcedureScreen : React.FC = () => {
                         const url = step.link.startsWith('http') ? step.link : `https://${step.link}`;
                         window.open(url, '_blank', 'noopener,noreferrer');
                       }}
-                      className="mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white text-[22px] font-bold">
+                      className={`mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white font-bold ${isLargeFont ? 'text-[26px]' : 'text-[22px]'}`}>
                       <ExternalLink className="w-5 h-5"/>
                       {t.web}
                     </button>
                   )}
-                  <button className="mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] text-[23px] font-bold text-black">
+                  <button className={`mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] font-bold text-black ${isLargeFont ? 'text-[27px]' : 'text-[23px]'}`}>
                     <Volume2 className="w-7 h-7"/>
                     {t.voice}
                   </button>
