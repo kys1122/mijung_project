@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -18,7 +18,15 @@ type Question = {
   next_module: string | null;
   sort_order?: number;
 };
-type Service = { service_name: string; agency?: string; eligibility?: string };
+type Service = {
+  service_name: string;
+  official_name?: string;
+  agency?: string;
+  targets?: string;
+  eligibility?: string;
+  official_link?: string;
+  url?: string;
+};
 
 type Msg =
   | { kind: 'text'; role: 'user' | 'assistant'; content: string }
@@ -75,6 +83,22 @@ export default function ChatPage() {
     if (!sid) { sid = `web-${Date.now()}-${Math.floor(Math.random() * 1e6)}`; localStorage.setItem('chat_session_id', sid); }
     return sid;
   })();
+
+  // 챗봇 백엔드가 더 맞춤형 답변을 주도록 user_type / visa_type을 같이 전달
+  const userTypeFromAnswers = (ans: Record<string, string>): string => {
+    const allVals = Object.values(ans).join(' ');
+    if (allVals.includes('외국인')) return 'foreigner';
+    if (allVals.includes('노인') || allVals.includes('고령')) return 'senior';
+    if (allVals.includes('저소득')) return 'low_income';
+    return 'general';
+  };
+  const visaFromAnswers = (ans: Record<string, string>): string => {
+    for (const val of Object.values(ans)) {
+      const m = String(val).match(/[A-Z]-?\d+/);
+      if (m) return m[0].replace(/(\w)(\d)/, '$1-$2');
+    }
+    return '';
+  };
 
   // --- 진입 시 ---
   useEffect(() => {
@@ -184,11 +208,8 @@ export default function ChatPage() {
         body: JSON.stringify({ context: finalAnswers, session_id: sid }),
       });
       const data = await res.json();
-      const matched: Service[] = ((data?.matched_services ?? data?.services ?? data?.results ?? []) as any[]).map((s: any) => ({
-        service_name: s.service_name,
-        agency: s.agency ?? s.official_name,
-        eligibility: s.eligibility,
-      }));
+      // 챗봇 응답 그대로 전달 (가공 X)
+      const matched: Service[] = (data?.matched_services ?? data?.services ?? data?.results ?? []) as Service[];
       const intro = matched.length > 0
         ? (lang === 'en'
             ? `Here are ${matched.length} candidate service${matched.length === 1 ? '' : 's'} that may fit. Tap one to see details.`
@@ -275,12 +296,17 @@ export default function ChatPage() {
     const sid = await ensureChatSession();
     if (sid) await saveMessage(sid, 'user', text);
 
+    const userType = userTypeFromAnswers(answers);
+    const visaType = visaFromAnswers(answers);
+
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: text, lang,
+          user_type: userType,
+          visa_type: visaType,
           history: messages.filter(m => m.kind === 'text').map((m: any) => ({ role: m.role, content: m.content })),
           session_id: externalSessionId,
         }),
@@ -336,13 +362,32 @@ export default function ChatPage() {
 
   const fallback = async (question: string, sid: number | null) => {
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, lang, session_id: externalSessionId }) });
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question, lang,
+          user_type: userTypeFromAnswers(answers),
+          visa_type: visaFromAnswers(answers),
+          session_id: externalSessionId,
+        }),
+      });
       const data = await res.json();
       const ans = data.answer ?? data.error ?? t.failResponse;
+      const sources: Service[] = Array.isArray(data?.sources) ? data.sources : [];
       setMessages(prev => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last.kind === 'text' && last.role === 'assistant') copy[copy.length - 1] = { kind: 'text', role: 'assistant', content: ans };
+        // 챗봇이 답변과 함께 관련 민원(sources)을 추천했으면 카드로 표시
+        if (sources.length > 0) {
+          copy.push({
+            kind: 'cards',
+            role: 'assistant',
+            intro: lang === 'en' ? 'Related services:' : '관련 민원:',
+            services: sources,
+          });
+        }
         return copy;
       });
       if (sid && ans) await saveMessage(sid, 'assistant', String(ans));
@@ -515,16 +560,7 @@ export default function ChatPage() {
             }
             if (m.kind === 'options') {
               const isLastOptions = i === messages.length - 1 && !sending;
-              const rawOpts = m.question.answer_options ?? [];
-              const hasFallback = rawOpts.some(o => {
-                const lab = (o.label ?? '').toLowerCase();
-                const val = (o.value ?? '').toLowerCase();
-                return lab.includes('잘 모르') || lab.includes('기타') || lab.includes('not sure') || lab.includes('other')
-                    || val.includes('잘 모르') || val === '기타' || val === 'other';
-              });
-              const opts = rawOpts.length > 0 && !hasFallback
-                ? [...rawOpts, { label: lang === 'en' ? "I'm not sure" : '잘 모르겠어요', value: '잘 모르겠어요' } as Option]
-                : rawOpts;
+              const opts = m.question.answer_options ?? [];
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
@@ -532,23 +568,16 @@ export default function ChatPage() {
                   </div>
                   {opts.length > 0 ? (
                     <div className="flex flex-col gap-2">
-                      {opts.map((opt) => {
-                        const isFallback = !rawOpts.includes(opt);
-                        return (
-                          <button
-                            key={opt.value}
-                            disabled={!isLastOptions}
-                            onClick={() => pickOption(m.question, opt)}
-                            className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                              isFallback
-                                ? (isHighContrast ? 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-yellow-400 hover:text-yellow-400' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/40')
-                                : `${optionCard} ${titleColor}`
-                            } ${sizeBubble}`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
+                      {opts.map((opt) => (
+                        <button
+                          key={opt.value}
+                          disabled={!isLastOptions}
+                          onClick={() => pickOption(m.question, opt)}
+                          className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   ) : (
                     <p className={`text-xs ${subtleColor} px-1`}>
@@ -568,21 +597,59 @@ export default function ChatPage() {
                     <p className={`${subtleColor} text-sm px-1`}>{lang === 'en' ? 'No matches.' : '맞는 민원을 찾지 못했어요.'}</p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {m.services.map((svc, idx) => (
-                        <button
-                          key={idx}
-                          disabled={sending}
-                          onClick={() => pickService(svc)}
-                          className={`group rounded-2xl border-2 shadow-sm transition-all p-4 text-left flex items-start gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${serviceCard}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-semibold ${titleColor} ${sizeBubble}`}>{svc.service_name}</p>
-                            {svc.agency && <p className={`mt-0.5 text-xs ${subtleColor}`}>{svc.agency}</p>}
-                            {svc.eligibility && <p className={`mt-1.5 text-sm leading-relaxed ${descColor} line-clamp-2`}>{svc.eligibility}</p>}
-                          </div>
-                          <ChevronRight className={`shrink-0 w-5 h-5 mt-1 ${subtleColor}`} />
-                        </button>
-                      ))}
+                      {m.services.map((svc, idx) => {
+                        const subTitle = svc.official_name && svc.official_name !== svc.service_name
+                          ? svc.official_name
+                          : svc.agency;
+                        const link = svc.official_link || svc.url;
+                        const targetChips = (svc.targets ?? '')
+                          .split(/[,，·•]/)
+                          .map(s => s.trim())
+                          .filter(Boolean)
+                          .slice(0, 4);
+                        return (
+                          <button
+                            key={idx}
+                            disabled={sending}
+                            onClick={() => pickService(svc)}
+                            className={`group rounded-2xl border-2 shadow-sm transition-all p-4 text-left flex items-start gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${serviceCard}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-semibold ${titleColor} ${sizeBubble}`}>{svc.service_name}</p>
+                              {subTitle && <p className={`mt-0.5 text-xs ${subtleColor} truncate`}>{subTitle}</p>}
+                              {targetChips.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {targetChips.map((tg, ti) => (
+                                    <span
+                                      key={ti}
+                                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${isHighContrast ? 'bg-zinc-800 text-yellow-400 border border-yellow-400/40' : 'bg-blue-50 text-blue-700'}`}
+                                    >
+                                      {tg}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {svc.eligibility && (
+                                <p className={`mt-1.5 text-sm leading-relaxed ${descColor} line-clamp-2`}>{svc.eligibility}</p>
+                              )}
+                              {link && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const url = link.startsWith('http') ? link : `https://${link}`;
+                                    window.open(url, '_blank', 'noopener,noreferrer');
+                                  }}
+                                  className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold cursor-pointer ${isHighContrast ? 'text-yellow-400 hover:text-yellow-300' : 'text-blue-600 hover:text-blue-700'}`}
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  {lang === 'en' ? 'Official page' : '공식 페이지'}
+                                </span>
+                              )}
+                            </div>
+                            <ChevronRight className={`shrink-0 w-5 h-5 mt-1 ${subtleColor}`} />
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
