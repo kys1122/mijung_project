@@ -31,7 +31,7 @@ export const STRINGS = {
     step: "Progress",
     langText: "KO/EN",
     highContrast: "Contrast",
-    largeFont: "BigFont",
+    largeFont: "Big Font",
     q1: "1.", q1_text: "What is your type?",
     q2: "2.", q2_text: "How old are you?",
     q3: "3.", q3_text: "What service do you need?",

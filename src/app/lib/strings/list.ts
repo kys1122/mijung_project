@@ -14,7 +14,7 @@ export const STRINGS = {
     btn: "View Procedure",
     langText: "KO/EN",
     highContrast: "Contrast",
-    largeFont: "BigFont",
+    largeFont: "Big Font",
     chatLabel: "Chat",
   },
 } as const;
