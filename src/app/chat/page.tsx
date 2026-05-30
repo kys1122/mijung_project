@@ -1,8 +1,20 @@
 'use client';
+/**
+ * 챗봇 페이지 — ai_civil_service_navigator/chatbot/ui.py 그대로 옮김.
+ * 흐름:
+ *   1. 유형 선택 (외국인/노인/저소득층/해당없음)   ← /options.user_types
+ *   2. 연령대 선택                                ← /options.age_groups
+ *   3. 서비스 카테고리 선택                        ← /options.categories
+ *   4. 세부사항 입력 (텍스트/음성 + 예시 버튼)
+ *   5. /analyze → 관련 민원 카드 → 선택
+ *   6. /service_detail → 민원 안내 + "체크리스트 보기"
+ *   7. /checklist → 체크리스트 + service_info 링크
+ *   8. 자유 채팅 (/chat)
+ */
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -10,31 +22,41 @@ import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
-type Option = { label: string; value: string; next_id?: number | null };
-type Question = {
-  id: number;
-  question_text: string;
-  answer_options: Option[] | null;
-  next_module: string | null;
-  sort_order?: number;
-};
+type Options = { user_types: string[]; age_groups: string[]; categories: string[] };
+
 type Service = {
   service_name: string;
   official_name?: string;
-  agency?: string;
   targets?: string;
   eligibility?: string;
   official_link?: string;
+  online_apply_url?: string;
   url?: string;
 };
 
+type Stage = 'step1' | 'step2' | 'step3' | 'step4' | 'cards' | 'detail' | 'checklist' | 'freechat';
+
 type Msg =
   | { kind: 'text'; role: 'user' | 'assistant'; content: string }
-  | { kind: 'options'; role: 'assistant'; question: Question }
-  | { kind: 'cards'; role: 'assistant'; intro: string; services: Service[] }
+  | { kind: 'options'; role: 'assistant'; stage: 'step1' | 'step2' | 'step3'; items: string[] }
+  | { kind: 'detailInput'; role: 'assistant'; examples: string[] }
+  | { kind: 'cards'; role: 'assistant'; services: Service[] }
   | { kind: 'detail'; role: 'assistant'; serviceName: string; content: string }
-  | { kind: 'checklist'; role: 'assistant'; serviceName: string; content: string }
+  | { kind: 'checklist'; role: 'assistant'; serviceName: string; content: string; info?: { official_link?: string; online_apply_url?: string; fee?: string; targets?: string } }
   | { kind: 'thinking'; role: 'assistant' };
+
+const TYPE_ICON: Record<string, string> = {
+  '노인/고령자': '👴', '저소득층': '🏠', '외국인': '🌍', '해당없음': '👤',
+};
+const CAT_ICON: Record<string, string> = {
+  '민원서류': '📄', '복지': '🤝', '주거': '🏠', '의료': '🏥',
+  '생활지원': '💡', '출입국': '✈️', '교육·문화': '📚', '잘 모르겠어요': '❓',
+};
+const EXAMPLES = [
+  '할머니가 기초연금 받을 수 있나요?',
+  '생활이 어려운데 도움받을 수 있나요?',
+  '비자 만료되는데 어떻게 해야 하나요?',
+];
 
 export default function ChatPage() {
   const router = useRouter();
@@ -46,12 +68,14 @@ export default function ChatPage() {
   const [isLargeFont, setIsLargeFont] = useState(false);
 
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [opts, setOpts] = useState<Options | null>(null);
+  const [stage, setStage] = useState<Stage>('step1');
+  const [selections, setSelections] = useState({ user_type: '', age_group: '', category: '', detail: '' });
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [input, setInput] = useState('');
+  const [detailInput, setDetailInput] = useState('');
   const [sending, setSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [intakeDone, setIntakeDone] = useState(false);
-  const [qaSessionId, setQaSessionId] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [chatSessionId, setChatSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -84,7 +108,7 @@ export default function ChatPage() {
     return sid;
   })();
 
-  // --- 진입 시 ---
+  // 진입 시 옵션 받고 Step 1 시작
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
@@ -101,154 +125,182 @@ export default function ChatPage() {
                 kind: 'text' as const, role: m.role, content: m.content,
               }));
               setMessages(restored);
-              setIntakeDone(true);
+              setStage('freechat');
               return;
             }
           } catch (e) { console.error('세션 로드 실패:', e); }
         }
       }
-      await startIntake();
-    })();
-  }, [sessionParam]);
-
-  // 챗봇의 questions/start에서 루트 첫 질문 받아 표시
-  const startIntake = async () => {
-    try {
-      const res = await fetch(`/api/qa/start?lang=${lang}`);
-      const data = await res.json();
-      const qs: Question[] = data?.questions ?? [];
-      // sort_order=1 이 트리 메인 진입점
-      const first = qs.find(q => q.sort_order === 1) ?? qs[0];
-      if (first) {
+      try {
+        const res = await fetch('/api/options');
+        const data: Options = await res.json();
+        setOpts(data);
         setMessages([
-          { kind: 'text', role: 'assistant', content: lang === 'en' ? "Hello! I'll find services that match. Tap an option, or type a question if you prefer." : '안녕하세요! 맞춤 민원을 찾아드릴게요. 옵션을 골라주시거나, 직접 질문하셔도 됩니다.' },
-          { kind: 'options', role: 'assistant', question: first },
+          { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Hello! Tell me a bit about yourself to find the right service.' : '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?' },
+          { kind: 'options', role: 'assistant', stage: 'step1', items: data.user_types },
         ]);
-      } else {
-        setMessages([{ kind: 'text', role: 'assistant', content: lang === 'en' ? 'Ask me anything.' : '무엇이든 물어보세요.' }]);
-        setIntakeDone(true);
+        setStage('step1');
+      } catch (e) {
+        console.error('options 로드 실패:', e);
       }
-    } catch (e) {
-      console.error('questions/start 실패:', e);
-      setMessages([{ kind: 'text', role: 'assistant', content: t.failServer }]);
-    }
+    })();
+  }, [sessionParam, lang]);
+
+  // 단계별 선택 핸들러
+  const pickStep1 = (ut: string) => {
+    setSelections(s => ({ ...s, user_type: ut }));
+    setMessages(prev => [
+      ...prev,
+      { kind: 'text', role: 'user', content: ut },
+      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'How old are you?' : '연령대를 선택해 주세요.' },
+      { kind: 'options', role: 'assistant', stage: 'step2', items: opts?.age_groups ?? [] },
+    ]);
+    setStage('step2');
+    // 외국인 선택 시 영어로 자동 전환 (ui.py:406-407)
+    if (ut === '외국인' && lang === 'ko') handleLang('en');
+  };
+  const pickStep2 = (ag: string) => {
+    setSelections(s => ({ ...s, age_group: ag }));
+    setMessages(prev => [
+      ...prev,
+      { kind: 'text', role: 'user', content: ag },
+      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'What kind of service do you need?' : '어떤 종류의 서비스가 필요하세요?' },
+      { kind: 'options', role: 'assistant', stage: 'step3', items: opts?.categories ?? [] },
+    ]);
+    setStage('step3');
+  };
+  const pickStep3 = (cat: string) => {
+    setSelections(s => ({ ...s, category: cat }));
+    setMessages(prev => [
+      ...prev,
+      { kind: 'text', role: 'user', content: cat },
+      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Tell me about your situation.' : '현재 상황을 알려주세요. 자유롭게 입력하거나 아래 예시를 눌러보세요.' },
+      { kind: 'detailInput', role: 'assistant', examples: EXAMPLES },
+    ]);
+    setStage('step4');
+  };
+  const submitDetail = (text: string) => {
+    if (!text.trim()) return;
+    setSelections(s => ({ ...s, detail: text }));
+    setDetailInput('');
+    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: text }]);
+    runAnalyze({ ...selections, detail: text });
   };
 
-  // 옵션 선택 → 트리 다음 질문 받기
-  const pickOption = async (q: Question, opt: Option) => {
-    if (sending) return;
+  // Step 5: /analyze
+  const runAnalyze = async (finalSel: typeof selections) => {
     setSending(true);
-    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: opt.label }, { kind: 'thinking', role: 'assistant' }]);
-    const newAnswers = { ...answers, [String(q.id)]: opt.value };
-    setAnswers(newAnswers);
-
-    try {
-      const res = await fetch('/api/qa/answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_id: q.id, answer_value: opt.value, session_id: qaSessionId, lang }),
-      });
-      const data = await res.json();
-      if (data?.session_id) setQaSessionId(data.session_id);
-
-      // thinking 제거
-      setMessages(prev => prev.filter(m => m.kind !== 'thinking'));
-
-      // 자유 채팅 분기로 진입
-      if (data?.next_module === 'free_chat' || q.next_module === 'free_chat') {
-        setMessages(prev => [...prev, { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Type your question below and I will look it up.' : '아래에 직접 입력해주시면 찾아드릴게요.' }]);
-        setIntakeDone(true);
-        setSending(false);
-        return;
-      }
-
-      if (data?.done) {
-        const merged = data.answers ?? newAnswers;
-        await runClassify(merged, data?.session_id ?? qaSessionId);
-        return;
-      }
-      if (data?.next_question) {
-        const next: Question = data.next_question;
-        setMessages(prev => [...prev, { kind: 'options', role: 'assistant', question: next }]);
-        setSending(false);
-      } else {
-        // 안전망: next_question도 done도 없으면 그냥 classify
-        await runClassify(newAnswers, qaSessionId);
-      }
-    } catch (e) {
-      console.error('answer 호출 실패:', e);
-      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
-      setSending(false);
-    }
-  };
-
-  // 트리가 done:true 주면 챗봇이 정의한 /classify 흐름 그대로 호출
-  // (chatbot/app.py:1385). 트리 답변을 그대로 context로 전달.
-  const runClassify = async (finalAnswers: Record<string, string>, sid: number | null) => {
     setMessages(prev => [...prev, { kind: 'thinking', role: 'assistant' }]);
     try {
-      const res = await fetch('/api/qa/classify', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: finalAnswers, session_id: sid }),
+        body: JSON.stringify({
+          user_type: finalSel.user_type,
+          age_group: finalSel.age_group,
+          category: finalSel.category,
+          detail: finalSel.detail,
+          lang,
+        }),
       });
       const data = await res.json();
-      const matched: Service[] = (data?.matched_services ?? data?.services ?? data?.results ?? []) as Service[];
-      const intro = matched.length > 0
-        ? (lang === 'en'
-            ? `Here are ${matched.length} candidate service${matched.length === 1 ? '' : 's'} that may fit. Tap one to see details.`
-            : `본인에게 맞을 만한 민원 ${matched.length}개를 찾았어요. 하나를 골라주시면 자세히 안내해드릴게요.`)
-        : (lang === 'en' ? 'No matching services. Try changing your answers or ask freely below.' : '맞는 민원을 찾지 못했어요. 답변을 바꿔보시거나 아래에서 자유롭게 질문해주세요.');
+      const services: Service[] = data?.matched_services ?? [];
+      localStorage.setItem('analyze_result', JSON.stringify(data));
+      localStorage.setItem('final_context', JSON.stringify({ ...finalSel, lang, submitted_at: new Date().toISOString() }));
 
-      localStorage.setItem('analyze_result', JSON.stringify({ matched_services: matched, summary: data?.summary, answers: finalAnswers, session_id: sid }));
-      localStorage.setItem('final_context', JSON.stringify({ answers: finalAnswers, lang, submitted_at: new Date().toISOString() }));
-
-      const newMsgs: Msg[] = [{ kind: 'cards', role: 'assistant', intro, services: matched }];
-      if (data?.summary) newMsgs.push({ kind: 'text', role: 'assistant', content: data.summary });
-
-      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), ...newMsgs]);
-      setIntakeDone(true);
+      setMessages(prev => [
+        ...prev.filter(m => m.kind !== 'thinking'),
+        {
+          kind: 'text',
+          role: 'assistant',
+          content: services.length === 0
+            ? (lang === 'en' ? "I couldn't find a matching service. Try different details below." : '입력하신 상황에 맞는 민원을 찾지 못했습니다. 아래에서 자유롭게 질문해 주세요.')
+            : (lang === 'en' ? '📋 Here are the recommended services. Pick one to see details.' : '📋 맞춤 민원 추천 결과입니다. 자세히 알고 싶은 민원을 선택해 주세요.'),
+        },
+        { kind: 'cards', role: 'assistant', services },
+      ]);
+      setStage('cards');
     } catch (e) {
-      console.error('classify 실패:', e);
+      console.error('analyze 실패:', e);
       setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
     } finally {
       setSending(false);
     }
   };
 
-  // 카드(민원) 선택 → 상세 + 체크리스트
+  // Step 6: 카드 선택 → service_detail
   const pickService = async (svc: Service) => {
-    if (sending) return;
-    setSending(true);
+    setSelectedService(svc);
     setMessages(prev => [
       ...prev,
       { kind: 'text', role: 'user', content: svc.service_name },
       { kind: 'thinking', role: 'assistant' },
     ]);
-
-    // user_type은 트리 1번 답변값을 그대로 전달 (챗봇이 트리에서 user_type을 묻도록 정의)
-    const userType = answers['1'] ?? '';
-
+    setSending(true);
     try {
-      const [detailRes, checkRes] = await Promise.all([
-        fetch('/api/service-detail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_name: svc.service_name, lang, user_type: userType }) }),
-        fetch('/api/llm-checklist',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_name: svc.service_name, lang, user_type: userType }) }),
+      const res = await fetch('/api/service-detail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_name: svc.service_name,
+          lang,
+          user_type: selections.user_type,
+        }),
+      });
+      const data = await res.json();
+      setMessages(prev => [
+        ...prev.filter(m => m.kind !== 'thinking'),
+        { kind: 'detail', role: 'assistant', serviceName: svc.service_name, content: data?.detail ?? '' },
       ]);
-      const detail = await detailRes.json();
-      const check = await checkRes.json();
-      const newMsgs: Msg[] = [];
-      if (detail?.detail) newMsgs.push({ kind: 'detail', role: 'assistant', serviceName: svc.service_name, content: detail.detail });
-      if (check?.checklist) newMsgs.push({ kind: 'checklist', role: 'assistant', serviceName: svc.service_name, content: check.checklist });
-      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), ...newMsgs]);
+      setStage('detail');
     } catch (e) {
-      console.error('service_detail/checklist 실패:', e);
+      console.error('service_detail 실패:', e);
       setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
     } finally {
       setSending(false);
     }
   };
 
-  // 자유 채팅
+  // Step 7: 체크리스트 보기 → /checklist
+  const loadChecklist = async () => {
+    if (!selectedService) return;
+    setMessages(prev => [
+      ...prev,
+      { kind: 'text', role: 'user', content: lang === 'en' ? '📝 Show checklist' : '📝 신청 체크리스트 보기' },
+      { kind: 'thinking', role: 'assistant' },
+    ]);
+    setSending(true);
+    try {
+      const res = await fetch('/api/llm-checklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_name: selectedService.service_name,
+          lang,
+          user_type: selections.user_type,
+        }),
+      });
+      const data = await res.json();
+      setMessages(prev => [
+        ...prev.filter(m => m.kind !== 'thinking'),
+        {
+          kind: 'checklist',
+          role: 'assistant',
+          serviceName: selectedService.service_name,
+          content: data?.checklist ?? '',
+          info: data?.service_info ?? {},
+        },
+      ]);
+      setStage('checklist');
+    } catch (e) {
+      console.error('checklist 실패:', e);
+      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Step 8: 자유 채팅
   const ensureChatSession = async (): Promise<number | null> => {
     if (!getAccessToken()) return null;
     if (chatSessionId) return chatSessionId;
@@ -264,7 +316,6 @@ export default function ChatPage() {
   };
 
   const sendFreeChat = async () => {
-    if (!intakeDone) return; // intake 중 입력바 비활성
     const text = input.trim();
     if (!text || sending) return;
     setInput('');
@@ -275,114 +326,75 @@ export default function ChatPage() {
     if (sid) await saveMessage(sid, 'user', text);
 
     try {
-      const res = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: text, lang,
-          history: messages.filter(m => m.kind === 'text').map((m: any) => ({ role: m.role, content: m.content })),
-          session_id: externalSessionId,
-        }),
-      });
-
-      if (!res.ok || !res.body) { await fallback(text, sid); return; }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '', acc = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx;
-        while ((idx = buf.indexOf('\n\n')) !== -1) {
-          const raw = buf.slice(0, idx).trim();
-          buf = buf.slice(idx + 2);
-          if (!raw.startsWith('data:')) continue;
-          const payload = raw.slice(5).trim();
-          if (payload === '[DONE]') continue;
-          try {
-            const obj = JSON.parse(payload);
-            const chunk = obj.chunk ?? obj.delta ?? obj.text ?? '';
-            if (chunk) {
-              acc += chunk;
-              setMessages(prev => {
-                const copy = [...prev];
-                const last = copy[copy.length - 1];
-                if (last.kind === 'text' && last.role === 'assistant') copy[copy.length - 1] = { kind: 'text', role: 'assistant', content: acc };
-                return copy;
-              });
-            }
-          } catch {
-            acc += payload;
-            setMessages(prev => {
-              const copy = [...prev];
-              const last = copy[copy.length - 1];
-              if (last.kind === 'text' && last.role === 'assistant') copy[copy.length - 1] = { kind: 'text', role: 'assistant', content: acc };
-              return copy;
-            });
-          }
-        }
-      }
-      if (!acc) await fallback(text, sid);
-      else if (sid) await saveMessage(sid, 'assistant', acc);
-    } catch (e) {
-      console.error('chat stream error:', e);
-      await fallback(text, sid);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const fallback = async (question: string, sid: number | null) => {
-    try {
+      // ui.py _handle_chat_input: user_type / category / lang / history / session_id 전달
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question, lang,
+          question: text,
+          user_type: selections.user_type,
+          category: selections.category,
+          lang,
+          history: messages.filter(m => m.kind === 'text').map((m: any) => ({ role: m.role, content: m.content })),
           session_id: externalSessionId,
         }),
       });
       const data = await res.json();
-      const ans = data.answer ?? data.error ?? t.failResponse;
+      const ans = data?.answer ?? data?.error ?? t.failResponse;
       const sources: Service[] = Array.isArray(data?.sources) ? data.sources : [];
       setMessages(prev => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last.kind === 'text' && last.role === 'assistant') copy[copy.length - 1] = { kind: 'text', role: 'assistant', content: ans };
-        // 챗봇이 답변과 함께 관련 민원(sources)을 추천했으면 카드로 표시
         if (sources.length > 0) {
-          copy.push({
-            kind: 'cards',
-            role: 'assistant',
-            intro: lang === 'en' ? 'Related services:' : '관련 민원:',
-            services: sources,
-          });
+          copy.push({ kind: 'cards', role: 'assistant', services: sources });
         }
         return copy;
       });
       if (sid && ans) await saveMessage(sid, 'assistant', String(ans));
-    } catch {
+    } catch (e) {
+      console.error('chat error:', e);
       setMessages(prev => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last.kind === 'text' && last.role === 'assistant') copy[copy.length - 1] = { kind: 'text', role: 'assistant', content: t.failServer };
         return copy;
       });
+    } finally {
+      setSending(false);
     }
   };
 
   const handleNewChat = async () => {
     setMessages([]);
-    setAnswers({});
-    setQaSessionId(null);
-    setChatSessionId(null);
-    setIntakeDone(false);
+    setSelections({ user_type: '', age_group: '', category: '', detail: '' });
+    setSelectedService(null);
+    setStage('step1');
     setInput('');
+    setDetailInput('');
+    setChatSessionId(null);
     router.replace('/chat');
     initRef.current = false;
-    await startIntake();
-    initRef.current = true;
+    // re-trigger init
+    setTimeout(() => { initRef.current = true; }, 0);
+    try {
+      const res = await fetch('/api/options');
+      const data: Options = await res.json();
+      setOpts(data);
+      setMessages([
+        { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Hello! Tell me a bit about yourself to find the right service.' : '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?' },
+        { kind: 'options', role: 'assistant', stage: 'step1', items: data.user_types },
+      ]);
+    } catch (e) { console.error('options 로드 실패:', e); }
+  };
+
+  const goPickAnotherService = () => {
+    setSelectedService(null);
+    setStage('cards');
+    setMessages(prev => [
+      ...prev,
+      { kind: 'text', role: 'user', content: lang === 'en' ? '⬅️ Pick another service' : '⬅️ 다른 민원 선택' },
+    ]);
   };
 
   // 음성
@@ -396,8 +408,14 @@ export default function ChatPage() {
       rec.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const fd = new FormData(); fd.append('file', blob, 'voice.wav'); fd.append('language', lang);
-        try { const r = await fetch('/api/stt', { method: 'POST', body: fd }); const data = await r.json(); if (data.text) setInput(prev => (prev ? prev + ' ' : '') + data.text); }
-        catch (e) { console.error('STT 실패:', e); }
+        try {
+          const r = await fetch('/api/stt', { method: 'POST', body: fd });
+          const data = await r.json();
+          if (data?.text) {
+            if (stage === 'step4') setDetailInput(prev => (prev ? prev + ' ' : '') + data.text);
+            else setInput(prev => (prev ? prev + ' ' : '') + data.text);
+          }
+        } catch (e) { console.error('STT 실패:', e); }
       };
       rec.start();
       setIsRecording(true);
@@ -425,11 +443,14 @@ export default function ChatPage() {
   const serviceCard = isHighContrast
     ? 'bg-zinc-900 border-yellow-400 hover:bg-zinc-800'
     : 'bg-white border-blue-200 hover:bg-blue-50';
+  const exampleBtn = isHighContrast
+    ? 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200'
+    : 'bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700';
 
   const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
   const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
 
-  // 마크다운 렌더
+  // 간단 마크다운 렌더 (ui.py의 render_md 대응)
   const renderInline = (text: string, keyPrefix: string) => {
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((p, j) =>
@@ -446,11 +467,10 @@ export default function ChatPage() {
       const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
       if (hMatch) {
         const level = hMatch[1].length;
-        const content = hMatch[2];
         const cls = level <= 2
           ? `block mt-4 first:mt-0 font-bold ${isLargeFont ? 'text-xl' : 'text-lg'} ${isHighContrast ? 'text-yellow-400' : 'text-blue-700'}`
           : `block mt-3 first:mt-0 font-bold ${sizeRich}`;
-        return <div key={i} className={cls}>{renderInline(content, `${i}h`)}</div>;
+        return <div key={i} className={cls}>{renderInline(hMatch[2], `${i}h`)}</div>;
       }
       const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
       if (numMatch) {
@@ -473,9 +493,28 @@ export default function ChatPage() {
     });
   };
 
-  const inputPlaceholder = intakeDone
+  // 진행 단계 인디케이터 (ui.py의 step_labels 대응)
+  const STEP_LABELS = lang === 'en'
+    ? ['Type', 'Age', 'Category', 'Situation', 'Results', 'Detail', 'Checklist']
+    : ['유형', '연령대', '분류', '상황', '추천', '안내', '체크리스트'];
+  const stepIdxOf = (s: Stage): number => {
+    switch (s) {
+      case 'step1': return 0;
+      case 'step2': return 1;
+      case 'step3': return 2;
+      case 'step4': return 3;
+      case 'cards': return 4;
+      case 'detail': return 5;
+      case 'checklist': return 6;
+      default: return -1;
+    }
+  };
+  const currentStepIdx = stepIdxOf(stage);
+
+  const inputEnabled = stage === 'freechat' || stage === 'checklist' || stage === 'detail';
+  const inputPlaceholder = inputEnabled
     ? t.placeholder
-    : (lang === 'en' ? 'Pick an option above' : '위 옵션을 선택해주세요');
+    : (lang === 'en' ? 'Pick an option above' : '위에서 선택해주세요');
 
   return (
     <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
@@ -486,7 +525,7 @@ export default function ChatPage() {
               <PenSquare className="w-5 h-5" />
               <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
             </button>
-            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label="대화 기록" title={lang === 'en' ? 'History' : '기록'}>
+            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label="기록" title={lang === 'en' ? 'History' : '기록'}>
               <History className="w-5 h-5" />
             </button>
           </div>
@@ -496,6 +535,28 @@ export default function ChatPage() {
             isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
           />
         </header>
+
+        {/* 진행 인디케이터 */}
+        {currentStepIdx >= 0 && (
+          <div className={`px-5 sm:px-8 py-2 border-b ${headerBorder} overflow-x-auto`}>
+            <div className="flex items-center gap-1.5 min-w-max text-xs">
+              {STEP_LABELS.map((label, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <span className={
+                    i === currentStepIdx
+                      ? `font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`
+                      : i < currentStepIdx
+                        ? subtleColor
+                        : (isHighContrast ? 'text-zinc-600' : 'text-slate-300')
+                  }>
+                    {i < currentStepIdx ? '✓' : i === currentStepIdx ? '●' : '○'} {label}
+                  </span>
+                  {i < STEP_LABELS.length - 1 && <span className={isHighContrast ? 'text-zinc-700' : 'text-slate-300'}>—</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 flex flex-col gap-3 min-h-0">
           {messages.length === 0 && (
@@ -530,54 +591,90 @@ export default function ChatPage() {
               );
             }
             if (m.kind === 'options') {
-              const isLastOptions = i === messages.length - 1 && !sending;
-              const opts = m.question.answer_options ?? [];
+              const isActive = (m.stage === 'step1' && stage === 'step1')
+                || (m.stage === 'step2' && stage === 'step2')
+                || (m.stage === 'step3' && stage === 'step3');
+              const handler = m.stage === 'step1' ? pickStep1 : m.stage === 'step2' ? pickStep2 : pickStep3;
+              const iconMap = m.stage === 'step1' ? TYPE_ICON : m.stage === 'step3' ? CAT_ICON : {};
+              const useGrid = m.stage === 'step2' || m.stage === 'step3';
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
-                  <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
-                    {m.question.question_text}
+                  <div className={useGrid ? 'grid grid-cols-2 sm:grid-cols-3 gap-2' : 'flex flex-col gap-2'}>
+                    {m.items.map((opt) => (
+                      <button
+                        key={opt}
+                        disabled={!isActive || sending}
+                        onClick={() => handler(opt)}
+                        className={`px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
+                      >
+                        {iconMap[opt] ? <span className="mr-2">{iconMap[opt]}</span> : null}
+                        {opt}
+                      </button>
+                    ))}
                   </div>
-                  {opts.length > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      {opts.map((opt) => (
+                </div>
+              );
+            }
+            if (m.kind === 'detailInput') {
+              const isActive = stage === 'step4';
+              return (
+                <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
+                  <div className={`rounded-2xl border shadow-sm p-4 ${botBubble}`}>
+                    <p className={`text-sm ${subtleColor} mb-2`}>
+                      💡 {lang === 'en' ? 'Example: "My grandmother has trouble moving, and we want care at home."' : '예시: "할머니가 거동이 불편하셔서 집에서 돌봄 서비스를 받고 싶어요"'}
+                    </p>
+                    <textarea
+                      value={detailInput}
+                      onChange={(e) => setDetailInput(e.target.value)}
+                      placeholder={lang === 'en' ? 'Describe your situation...' : '현재 어려움이나 필요한 서비스를 설명해 주세요...'}
+                      rows={3}
+                      disabled={!isActive || sending}
+                      className={`w-full px-4 py-2.5 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none disabled:opacity-50 ${inputBg} ${sizeBubble}`}
+                    />
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {m.examples.map((ex, ei) => (
                         <button
-                          key={opt.value}
-                          disabled={!isLastOptions}
-                          onClick={() => pickOption(m.question, opt)}
-                          className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
+                          key={ei}
+                          disabled={!isActive || sending}
+                          onClick={() => submitDetail(ex)}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 ${exampleBtn}`}
                         >
-                          {opt.label}
+                          {ex}
                         </button>
                       ))}
                     </div>
-                  ) : (
-                    <p className={`text-xs ${subtleColor} px-1`}>
-                      {lang === 'en' ? 'Type your answer below.' : '아래에 직접 입력해주세요.'}
-                    </p>
-                  )}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={isRecording ? stopRec : startRec}
+                        disabled={!isActive || sending}
+                        className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${micBtn}`}
+                        aria-label="voice"
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => submitDetail(detailInput)}
+                        disabled={!isActive || sending || !detailInput.trim()}
+                        className={`flex-1 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`}
+                      >
+                        {lang === 'en' ? '🔍 Analyze' : '🔍 분석하기'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             }
             if (m.kind === 'cards') {
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
-                  <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
-                    {m.intro}
-                  </div>
                   {m.services.length === 0 ? (
-                    <p className={`${subtleColor} text-sm px-1`}>{lang === 'en' ? 'No matches.' : '맞는 민원을 찾지 못했어요.'}</p>
+                    <p className={`${subtleColor} text-sm px-1`}>{lang === 'en' ? 'No matches.' : '결과가 없습니다.'}</p>
                   ) : (
                     <div className="flex flex-col gap-2">
                       {m.services.map((svc, idx) => {
-                        const subTitle = svc.official_name && svc.official_name !== svc.service_name
-                          ? svc.official_name
-                          : svc.agency;
+                        const subTitle = svc.official_name && svc.official_name !== svc.service_name ? svc.official_name : undefined;
                         const link = svc.official_link || svc.url;
-                        const targetChips = (svc.targets ?? '')
-                          .split(/[,，·•]/)
-                          .map(s => s.trim())
-                          .filter(Boolean)
-                          .slice(0, 4);
+                        const targetChips = (svc.targets ?? '').split(/[,，·•]/).map(s => s.trim()).filter(Boolean).slice(0, 4);
                         return (
                           <button
                             key={idx}
@@ -600,9 +697,7 @@ export default function ChatPage() {
                                   ))}
                                 </div>
                               )}
-                              {svc.eligibility && (
-                                <p className={`mt-1.5 text-sm leading-relaxed ${descColor} line-clamp-2`}>{svc.eligibility}</p>
-                              )}
+                              {svc.eligibility && <p className={`mt-1.5 text-sm leading-relaxed ${descColor} line-clamp-2`}>{svc.eligibility}</p>}
                               {link && (
                                 <span
                                   onClick={(e) => {
@@ -627,26 +722,67 @@ export default function ChatPage() {
               );
             }
             if (m.kind === 'detail') {
+              const showActions = stage === 'detail' && selectedService?.service_name === m.serviceName;
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-blue-100 text-blue-700'}`}>
-                    <Sparkles className="w-3.5 h-3.5" /> {lang === 'en' ? `${m.serviceName} — Guide` : `${m.serviceName} · 민원 안내`}
+                    <Sparkles className="w-3.5 h-3.5" /> {m.serviceName} · {lang === 'en' ? 'Guide' : '민원 안내'}
                   </div>
                   <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
                     {renderRich(m.content)}
                   </div>
+                  {showActions && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <button
+                        onClick={loadChecklist}
+                        disabled={sending}
+                        className={`px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-50 ${sendBtn}`}
+                      >
+                        {lang === 'en' ? '📝 Show checklist' : '📝 신청 체크리스트 보기'}
+                      </button>
+                      <button
+                        onClick={goPickAnotherService}
+                        disabled={sending}
+                        className={`px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-50 ${exampleBtn}`}
+                      >
+                        <ArrowLeft className="w-4 h-4 inline mr-1" />
+                        {lang === 'en' ? 'Other service' : '다른 민원'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             }
             if (m.kind === 'checklist') {
+              const info = m.info ?? {};
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                    <ClipboardList className="w-3.5 h-3.5" /> {lang === 'en' ? `${m.serviceName} — Checklist` : `${m.serviceName} · 체크리스트`}
+                    <ClipboardList className="w-3.5 h-3.5" /> {m.serviceName} · {lang === 'en' ? 'Checklist' : '체크리스트'}
                   </div>
                   <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
                     {renderRich(m.content)}
                   </div>
+                  {(info.official_link || info.online_apply_url || info.fee) && (
+                    <div className={`rounded-2xl border p-4 ${isHighContrast ? 'bg-zinc-900 border-zinc-700' : 'bg-blue-50 border-blue-100'}`}>
+                      <p className={`text-sm font-bold mb-2 ${titleColor}`}>🔗 {lang === 'en' ? 'Useful links' : '유용한 링크'}</p>
+                      <div className="flex flex-col gap-1.5 text-sm">
+                        {info.official_link && (
+                          <a href={info.official_link.startsWith('http') ? info.official_link : `https://${info.official_link}`} target="_blank" rel="noopener noreferrer"
+                            className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
+                            🔗 {lang === 'en' ? 'Official' : '공식 사이트'} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        {info.online_apply_url && (
+                          <a href={info.online_apply_url.startsWith('http') ? info.online_apply_url : `https://${info.online_apply_url}`} target="_blank" rel="noopener noreferrer"
+                            className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
+                            💻 {lang === 'en' ? 'Apply online' : '온라인 신청'} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        {info.fee && <p className={subtleColor}>💰 {lang === 'en' ? 'Fee' : '수수료'}: {info.fee}</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -656,7 +792,7 @@ export default function ChatPage() {
 
         <div className={`px-5 sm:px-8 py-3 border-t ${headerBorder}`}>
           <div className="flex items-end gap-2">
-            <button onClick={isRecording ? stopRec : startRec} disabled={!intakeDone || sending}
+            <button onClick={isRecording ? stopRec : startRec} disabled={!inputEnabled || sending}
               className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm disabled:opacity-40 ${micBtn}`} aria-label="voice">
               <Mic className="w-5 h-5" />
             </button>
@@ -666,10 +802,10 @@ export default function ChatPage() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendFreeChat(); } }}
               placeholder={inputPlaceholder}
               rows={1}
-              disabled={!intakeDone || sending}
+              disabled={!inputEnabled || sending}
               className={`flex-1 resize-none px-4 py-2.5 rounded-2xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 ${inputBg} ${sizeBubble}`}
             />
-            <button onClick={sendFreeChat} disabled={!intakeDone || sending || !input.trim()}
+            <button onClick={sendFreeChat} disabled={!inputEnabled || sending || !input.trim()}
               className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label="send">
               <Send className="w-5 h-5" />
             </button>
