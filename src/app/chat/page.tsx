@@ -515,23 +515,40 @@ export default function ChatPage() {
             }
             if (m.kind === 'options') {
               const isLastOptions = i === messages.length - 1 && !sending;
+              const rawOpts = m.question.answer_options ?? [];
+              const hasFallback = rawOpts.some(o => {
+                const lab = (o.label ?? '').toLowerCase();
+                const val = (o.value ?? '').toLowerCase();
+                return lab.includes('잘 모르') || lab.includes('기타') || lab.includes('not sure') || lab.includes('other')
+                    || val.includes('잘 모르') || val === '기타' || val === 'other';
+              });
+              const opts = rawOpts.length > 0 && !hasFallback
+                ? [...rawOpts, { label: lang === 'en' ? "I'm not sure" : '잘 모르겠어요', value: '잘 모르겠어요' } as Option]
+                : rawOpts;
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
                     {m.question.question_text}
                   </div>
-                  {m.question.answer_options && m.question.answer_options.length > 0 ? (
+                  {opts.length > 0 ? (
                     <div className="flex flex-col gap-2">
-                      {m.question.answer_options.map((opt) => (
-                        <button
-                          key={opt.value}
-                          disabled={!isLastOptions}
-                          onClick={() => pickOption(m.question, opt)}
-                          className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                      {opts.map((opt) => {
+                        const isFallback = !rawOpts.includes(opt);
+                        return (
+                          <button
+                            key={opt.value}
+                            disabled={!isLastOptions}
+                            onClick={() => pickOption(m.question, opt)}
+                            className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isFallback
+                                ? (isHighContrast ? 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-yellow-400 hover:text-yellow-400' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/40')
+                                : `${optionCard} ${titleColor}`
+                            } ${sizeBubble}`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className={`text-xs ${subtleColor} px-1`}>
