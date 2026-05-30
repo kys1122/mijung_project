@@ -1,121 +1,144 @@
 "use client"
 
-import React, {useState} from "react";
-import {useForm} from "react-hook-form";
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const SignupScreen : React.FC = () => {
+const SignupScreen: React.FC = () => {
   const router = useRouter();
-  const {register, handleSubmit, formState:{errors}, watch } = useForm({mode: 'onChange'});
+  const { register, handleSubmit, formState: { errors, isValid }, watch } = useForm({ mode: 'onChange' });
 
-  //현재 비밀번호 감시
   const password = watch("password");
 
-  //비밀번호 공개 여부
   const [showPw, setShowPw] = useState(false);
   const [showChkPw, setShowChkPw] = useState(false);
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  //유효성 검사 기준
-  const emailRegex = /^[a-zA-Z0-9-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/; //이메일 형식
-  const passwordRegex = /.{8,}/; //8글자 이상
+  const emailRegex = /^[a-zA-Z0-9-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+  const passwordRegex = /.{8,}/;
 
-  const onSubmit = async(data:any) => {
-    try{
+  const onSubmit = async (data: any) => {
+    setServerError("");
+    setLoading(true);
+    try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: {'Content-Type' : 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          name: data.email.split('@')[0] //임시. 이메일 앞부분 이름으로 사용
+          name: data.email.split('@')[0]
         })
-      })
+      });
       const result = await response.json();
-
-      if(result.success){
+      if (result.success) {
         router.push("/user/login");
-      }else{
-        alert(result.message);
+      } else {
+        setServerError(result.message ?? "회원가입에 실패했습니다.");
       }
-    }catch(error){
+    } catch (error) {
       console.error("회원가입 중 에러 발생 : ", error);
-      alert("네트워크 오류가 발생했습니다.");
+      setServerError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  return(
-    <form onSubmit={handleSubmit(onSubmit)} className='pt-[50px] items-center flex flex-col bg-white'>
-        <h1 className='w-full max-w-[450px] text-[36px] font-bold text-black mx-10'>
-          회원가입
-        </h1>
-        <div className="w-[340px] pt-[40px] flex flex-col">
-          <label className="text-[24px] font-medium">이메일</label>
-          <input
-            {...register("email", {required: true, pattern: emailRegex})}
-            className="px-5 py-3 border border-[#000000] rounded-[13px] focus:outline-none focus:border-[#009DFF] text-[22px] text-black"
-            type="email"
-            placeholder="이메일 입력">
-          </input>
-          {errors?.email?.type === 'required' && <p className="text-[#ff0000]">이메일을 입력해주세요.</p>}
-          {errors?.email?.type === 'pattern' && <p className="text-[#ff0000]">이메일 양식에 맞게 입력해주세요.</p>}
-        </div>
-        <div className="w-[340px] pt-[25px] flex flex-col">
-          <label className="text-[24px] font-medium">비밀번호</label>
-          <div className=" relative flex flex-col">
-            <input
-              {...register("password", {required: true, pattern:passwordRegex})}
-              className="px-5 py-3 border border-[#000000] rounded-[13px] focus:outline-none focus:border-[#009DFF] text-[22px] text-black"
-              type={showPw ? "text" : "password"}
-              placeholder="비밀번호 입력">
-            </input>
-            <div
-              onClick={() => setShowPw(!showPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-            >
-              {showPw ? (<EyeOff className="w-7 h-7"/>) : (<Eye className="w-7 h-7"/>)}
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 pt-16 pb-12">
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[420px]">
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">회원가입</h1>
+        <p className="mt-1.5 text-sm text-slate-500">계정을 만들고 민원 진행을 저장하세요</p>
+
+        <div className="mt-8 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">이메일</label>
+              <input
+                {...register("email", { required: true, pattern: emailRegex })}
+                className={`w-full px-4 py-3 bg-white border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors?.email ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                type="email"
+                placeholder="example@email.com"
+                autoComplete="email"
+              />
+              {errors?.email?.type === 'required' && <p className="mt-1.5 text-xs text-red-600">이메일을 입력해주세요.</p>}
+              {errors?.email?.type === 'pattern' && <p className="mt-1.5 text-xs text-red-600">이메일 양식에 맞게 입력해주세요.</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">비밀번호</label>
+              <div className="relative">
+                <input
+                  {...register("password", { required: true, pattern: passwordRegex })}
+                  className={`w-full px-4 py-3 pr-11 bg-white border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors?.password ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                  type={showPw ? "text" : "password"}
+                  placeholder="8자 이상"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors?.password?.type === 'required' && <p className="mt-1.5 text-xs text-red-600">비밀번호를 입력해주세요.</p>}
+              {errors?.password?.type === 'pattern' && <p className="mt-1.5 text-xs text-red-600">비밀번호는 8자 이상이어야 합니다.</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">비밀번호 확인</label>
+              <div className="relative">
+                <input
+                  {...register("chkPassword", { required: true, pattern: passwordRegex, validate: (value) => value === password })}
+                  className={`w-full px-4 py-3 pr-11 bg-white border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors?.chkPassword ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                  type={showChkPw ? "text" : "password"}
+                  placeholder="비밀번호 재입력"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowChkPw(!showChkPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showChkPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors?.chkPassword?.type === 'required' && <p className="mt-1.5 text-xs text-red-600">비밀번호 확인을 입력해주세요.</p>}
+              {errors?.chkPassword?.type === 'pattern' && <p className="mt-1.5 text-xs text-red-600">비밀번호는 8자 이상이어야 합니다.</p>}
+              {errors?.chkPassword?.type === 'validate' && <p className="mt-1.5 text-xs text-red-600">비밀번호가 일치하지 않습니다.</p>}
             </div>
           </div>
-          {errors?.password?.type === 'required' && <p className="text-[#ff0000]">비밀번호를 입력해주세요.</p>}
-          {errors?.password?.type === 'pattern' && <p className="text-[#ff0000]">비밀번호는 8자 이상이어야 합니다.</p>}
-        </div>
-        <div className="w-[340px] pt-[25px] flex flex-col relative">
-          <label className="text-[24px] font-medium">비밀번호 확인</label>
-          <div className=" relative flex flex-col">
-            <input
-              {...register("chkPassword", {required: true, pattern:passwordRegex, validate: (value) => (value) == password})}
-              className="px-5 py-3 border border-[#000000] rounded-[13px] focus:outline-none focus:border-[#009DFF] text-[22px] text-black"
-              type={showChkPw ? "text" : "password"}
-              placeholder="비밀번호 확인">
-            </input>
-            <div
-              onClick={() => setShowChkPw(!showChkPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-            >
-              {showChkPw ? (<EyeOff className="w-7 h-7"/>) : (<Eye className="w-7 h-7"/>)}
+
+          {serverError && (
+            <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700">
+              {serverError}
             </div>
-          </div>
-          {errors?.chkPassword?.type === 'required' && <p className="text-[#ff0000]">비밀번호 확인을 입력해주세요.</p>}
-          {errors?.chkPassword?.type === 'pattern' && <p className="text-[#ff0000]">비밀번호는 8자 이상이어야 합니다.</p>}
-          {errors?.chkPassword?.type === 'validate' && <p className="text-[#ff0000]">비밀번호가 일치하지 않습니다.</p>}
-        </div>
-        <div className='flex flex-col items-center mt-20'>
-          <button type="submit" className='w-[315px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
-            가입하기
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !isValid}
+            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors rounded-xl text-white font-semibold text-base"
+          >
+            {loading ? '가입 처리 중...' : '가입하기'}
           </button>
         </div>
-        <div
-          className="flex items-center">
+
+        <div className="mt-5 text-center">
           <Link
             href="/user/login"
-            className="pt-[10px] text-[20px] text-[#515151] select-none"
-            style={{textDecoration: 'underline', textUnderlineOffset: '4px'}}
+            className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
           >
-            로그인
+            이미 계정이 있으신가요? <span className="font-medium text-blue-600">로그인</span>
           </Link>
         </div>
-    </form>
+      </form>
+    </div>
   );
 }
 

@@ -35,7 +35,11 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             message: "로그인에 성공했습니다.",
-            data: { accessToken, refreshToken }
+            data: {
+                accessToken,
+                refreshToken,
+                user: { id: user.id, email: user.email, name: user.name }
+            }
         }, {status: 200});
     } catch (error) {
         console.error("Login Error:", error);
