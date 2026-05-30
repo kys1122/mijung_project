@@ -223,17 +223,22 @@ export default function ChatPage() {
         agency: s.agency ?? s.official_name,
         eligibility: s.eligibility,
       }));
-      const summary = data?.summary ?? (lang === 'en'
-        ? 'Based on your answers, these services might fit:'
-        : '입력하신 내용을 기준으로 추천드릴 민원이에요.');
+      const intro = matched.length > 0
+        ? (lang === 'en'
+            ? `Here are ${matched.length} candidate service${matched.length === 1 ? '' : 's'} that may fit. Tap one to see details.`
+            : `본인에게 맞을 만한 민원 ${matched.length}개를 찾았어요. 하나를 골라주시면 자세히 안내해드릴게요.`)
+        : (lang === 'en' ? 'No matching services. Try changing your answers or ask freely below.' : '맞는 민원을 찾지 못했어요. 답변을 바꿔보시거나 아래에서 자유롭게 질문해주세요.');
 
-      localStorage.setItem('analyze_result', JSON.stringify({ matched_services: matched, summary, answers: finalAnswers }));
+      localStorage.setItem('analyze_result', JSON.stringify({ matched_services: matched, summary: data?.summary, answers: finalAnswers }));
       localStorage.setItem('final_context', JSON.stringify({ type: finalAnswers.type, age: finalAnswers.age, service: finalAnswers.service, detail: finalAnswers.detail, lang, submitted_at: new Date().toISOString() }));
 
-      setMessages(prev => [
-        ...prev.filter(m => m.kind !== 'thinking'),
-        { kind: 'cards', role: 'assistant', intro: summary, services: matched },
-      ]);
+      const newMsgs: Msg[] = [
+        { kind: 'cards', role: 'assistant', intro, services: matched },
+      ];
+      if (data?.summary) {
+        newMsgs.push({ kind: 'text', role: 'assistant', content: data.summary });
+      }
+      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), ...newMsgs]);
       setIntakeDone(true);
     } catch (e) {
       console.error('analyze 실패:', e);
@@ -453,6 +458,51 @@ export default function ChatPage() {
     : 'bg-white border-blue-200 hover:bg-blue-50';
 
   const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
+  const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
+
+  // 간단 마크다운 렌더 — # 헤더, **굵게**, 리스트(-, *, 1.), 빈줄
+  const renderInline = (text: string, keyPrefix: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, j) =>
+      p.startsWith('**') && p.endsWith('**')
+        ? <strong key={`${keyPrefix}-${j}`} className={isHighContrast ? 'text-yellow-400' : 'text-blue-700'}>{p.slice(2, -2)}</strong>
+        : <span key={`${keyPrefix}-${j}`}>{p}</span>
+    );
+  };
+  const renderRich = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      const trimmed = line.trimEnd();
+      if (!trimmed.trim()) return <div key={i} className="h-2" />;
+      const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (hMatch) {
+        const level = hMatch[1].length;
+        const content = hMatch[2];
+        const cls = level <= 2
+          ? `block mt-4 first:mt-0 font-bold ${isLargeFont ? 'text-xl' : 'text-lg'} ${isHighContrast ? 'text-yellow-400' : 'text-blue-700'}`
+          : `block mt-3 first:mt-0 font-bold ${sizeRich}`;
+        return <div key={i} className={cls}>{renderInline(content, `${i}h`)}</div>;
+      }
+      const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+      if (numMatch) {
+        return (
+          <div key={i} className="flex gap-2 mt-1.5 first:mt-0">
+            <span className={`shrink-0 font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>{numMatch[1]}.</span>
+            <span className="flex-1">{renderInline(numMatch[2], `${i}n`)}</span>
+          </div>
+        );
+      }
+      if (/^[-*•]\s/.test(trimmed)) {
+        return (
+          <div key={i} className="flex gap-2 mt-1.5 first:mt-0">
+            <span className={`shrink-0 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>•</span>
+            <span className="flex-1">{renderInline(trimmed.replace(/^[-*•]\s/, ''), `${i}l`)}</span>
+          </div>
+        );
+      }
+      return <div key={i} className="mt-1.5 first:mt-0">{renderInline(trimmed, `${i}p`)}</div>;
+    });
+  };
 
   // intake 단계 마지막에서만 input이 활성화 (detail step)
   const currentIntakeStep = (() => {
@@ -595,24 +645,24 @@ export default function ChatPage() {
             }
             if (m.kind === 'detail') {
               return (
-                <div key={i} className="flex flex-col gap-1 self-start max-w-full w-full">
-                  <div className={`flex items-center gap-1.5 px-1 text-xs font-semibold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                    <Sparkles className="w-3.5 h-3.5" /> {lang === 'en' ? `About ${m.serviceName}` : `${m.serviceName} 안내`}
+                <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-blue-100 text-blue-700'}`}>
+                    <Sparkles className="w-3.5 h-3.5" /> {lang === 'en' ? `${m.serviceName} — Guide` : `${m.serviceName} · 민원 안내`}
                   </div>
-                  <div className={`max-w-[90%] px-4 py-3 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
-                    {m.content}
+                  <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
+                    {renderRich(m.content)}
                   </div>
                 </div>
               );
             }
             if (m.kind === 'checklist') {
               return (
-                <div key={i} className="flex flex-col gap-1 self-start max-w-full w-full">
-                  <div className={`flex items-center gap-1.5 px-1 text-xs font-semibold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                    <ClipboardList className="w-3.5 h-3.5" /> {lang === 'en' ? `Checklist for ${m.serviceName}` : `${m.serviceName} 체크리스트`}
+                <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <ClipboardList className="w-3.5 h-3.5" /> {lang === 'en' ? `${m.serviceName} — Checklist` : `${m.serviceName} · 체크리스트`}
                   </div>
-                  <div className={`max-w-[90%] px-4 py-3 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
-                    {m.content}
+                  <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
+                    {renderRich(m.content)}
                   </div>
                 </div>
               );
