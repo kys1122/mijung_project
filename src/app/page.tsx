@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from 'next/link';
 import { LogOut, ClipboardList, Search } from 'lucide-react';
 import { apiFetch, clearTokens, getAccessToken } from '@/lib/api-client';
+import BottomNav from './components/BottomNav';
 
 type User = { id: number; email: string; name: string };
 
@@ -37,7 +38,7 @@ const MainScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-16 pb-12">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-16 pb-24">
       <div className="w-full max-w-md sm:max-w-lg">
         {loading ? (
           <div className="h-16" />
@@ -109,6 +110,7 @@ const MainScreen: React.FC = () => {
           )}
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

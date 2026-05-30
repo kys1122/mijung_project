@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Send, Mic, Sparkles } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
+import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
@@ -228,7 +229,7 @@ export default function ChatPage() {
   const sizeBack = isLargeFont ? 'text-lg' : 'text-base';
 
   return (
-    <div className={`fixed inset-0 flex flex-col ${pageBg}`}>
+    <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
       <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
         <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
           <button
@@ -305,6 +306,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+      <BottomNav />
     </div>
   );
 }

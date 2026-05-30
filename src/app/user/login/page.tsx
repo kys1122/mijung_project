@@ -29,7 +29,7 @@ const LoginScreen: React.FC = () => {
       if (result.success) {
         localStorage.setItem('accessToken', result.data.accessToken);
         localStorage.setItem('refreshToken', result.data.refreshToken);
-        router.push("/list");
+        router.push("/chat");
       } else {
         setErrorMsg(result.message ?? "로그인에 실패했습니다.");
       }

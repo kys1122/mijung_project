@@ -8,6 +8,7 @@ import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
+import BottomNav from '../../../components/BottomNav';
 
 const ProcedureScreen: React.FC = () => {
   const router = useRouter();
@@ -155,7 +156,7 @@ const ProcedureScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${pageBg}`}>
-      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-16">
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
         <header className="flex items-center justify-between gap-2">
           <button
             onClick={() => router.back()}
@@ -254,6 +255,7 @@ const ProcedureScreen: React.FC = () => {
           ))}
         </div>
       </div>
+      <BottomNav />
     </div>
   )
 }

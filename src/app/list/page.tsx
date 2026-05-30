@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Sparkles } from "lucide-react";
 import TopSettings from '../components/TopSettings';
-import ChatFab from '../components/ChatFab';
+import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
@@ -107,7 +107,7 @@ const ListScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${pageBg}`}>
-      <div className="mx-auto max-w-md sm:max-w-3xl lg:max-w-5xl px-5 sm:px-8 pt-6 pb-24">
+      <div className="mx-auto max-w-md sm:max-w-3xl lg:max-w-5xl px-5 sm:px-8 pt-6 pb-28">
         <div className="flex items-start justify-end">
           <TopSettings
             lang={lang} setLang={handleLang}
@@ -160,7 +160,7 @@ const ListScreen: React.FC = () => {
           </div>
         )}
       </div>
-      <ChatFab isHighContrast={isHighContrast} label={t.chatLabel} />
+      <BottomNav />
     </div>
   );
 }

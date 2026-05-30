@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, FileText, ClipboardCheck, CheckCircle2, File
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { apiFetch, getAccessToken } from "@/lib/api-client";
+import BottomNav from "../components/BottomNav";
 
 type Step = 'description' | 'required_docs' | 'checklist' | 'submitted';
 
@@ -67,7 +68,7 @@ const DashboardScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-md sm:max-w-2xl md:max-w-3xl px-5 sm:px-8 pb-16">
+      <div className="mx-auto max-w-md sm:max-w-2xl md:max-w-3xl px-5 sm:px-8 pb-24">
         <header className="pt-6 flex items-center gap-2">
           <button
             onClick={() => router.back()}
@@ -150,6 +151,7 @@ const DashboardScreen: React.FC = () => {
           </div>
         )}
       </div>
+      <BottomNav />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
+import BottomNav from '../../../components/BottomNav';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();
@@ -109,7 +110,7 @@ const DocumentScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${pageBg}`}>
-      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-16">
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
         <header className="flex items-center justify-between gap-2">
           <button
             onClick={() => router.back()}
@@ -213,6 +214,7 @@ const DocumentScreen: React.FC = () => {
           data={selectedDoc}
         />
       </div>
+      <BottomNav />
     </div>
   )
 }
