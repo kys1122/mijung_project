@@ -48,3 +48,15 @@ CREATE TABLE IF NOT EXISTS terms (
   easy_explain TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- mijung 전용: 사용자별 민원 진행 단계 추적 (description -> required_docs -> checklist -> submitted)
+CREATE TABLE IF NOT EXISTS mijung_service_progress (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id VARCHAR(100) NOT NULL,
+  service_id INT NOT NULL,
+  last_step ENUM('description', 'required_docs', 'checklist', 'submitted') NOT NULL DEFAULT 'description',
+  started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_service (user_id, service_id),
+  KEY idx_user_updated (user_id, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
