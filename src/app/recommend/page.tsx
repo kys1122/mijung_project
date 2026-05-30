@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Sparkles, Search, Building2 } from "lucide-react";
+import { ChevronRight, Sparkles, Search, Building2, Loader2 } from "lucide-react";
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -25,12 +25,21 @@ interface ServiceItem {
 }
 
 const RecommendScreen: React.FC = () => {
+  const router = useRouter();
+
+  // /qa에서 저장한 추천 결과 (있을 때만)
   const [recs, setRecs] = useState<RecItem[]>([]);
   const [aiSummary, setAiSummary] = useState<string>("");
+
+  // 전체 민원
   const [all, setAll] = useState<ServiceItem[]>([]);
   const [allLoading, setAllLoading] = useState(true);
+
+  // 검색
   const [query, setQuery] = useState("");
-  const router = useRouter();
+  const [searchHits, setSearchHits] = useState<RecItem[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState("");
 
   useEffect(() => {
     try {
@@ -83,6 +92,54 @@ const RecommendScreen: React.FC = () => {
 
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
+  // 검색어로 챗봇 /analyze 호출 → 결과 setSearchHits
+  const runSearch = async () => {
+    const q = query.trim();
+    if (!q || searchLoading) return;
+    setSearchLoading(true);
+    setSearchedQuery(q);
+
+    // /qa에서 저장한 컨텍스트 있으면 가져옴, 없으면 기본값
+    let ctx: any = null;
+    try { ctx = JSON.parse(localStorage.getItem('final_context') ?? 'null'); } catch {}
+    const payload = {
+      user_type: ctx?.type || '해당없음',
+      age_group: ctx?.age || '',
+      category: '',
+      detail: q,
+      lang,
+      visa_type: ctx?.visa_type || '',
+    };
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      const list: any[] = Array.isArray(data?.matched_services) ? data.matched_services : [];
+      const mapped: RecItem[] = list.map((s: any, idx: number) => ({
+        id: idx + 1,
+        url: encodeURIComponent(s.service_name),
+        title: s.service_name,
+        description: `${s.agency ?? s.official_name ?? ''}${s.eligibility ? ' · ' + s.eligibility : ''}`.trim(),
+      }));
+      setSearchHits(mapped);
+    } catch (e) {
+      console.error('검색 실패:', e);
+      setSearchHits([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setQuery("");
+    setSearchHits(null);
+    setSearchedQuery("");
+  };
+
   const filteredAll = query.trim()
     ? all.filter((s) => {
         const q = query.trim().toLowerCase();
@@ -101,14 +158,11 @@ const RecommendScreen: React.FC = () => {
     ? 'bg-zinc-900 border-yellow-400 text-white'
     : 'bg-blue-50 border-blue-100 text-slate-700';
   const inputBg = isHighContrast
-    ? 'bg-zinc-900 border-zinc-700 text-white'
-    : 'bg-white border-slate-200 text-slate-900';
+    ? 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
+    : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
     : 'bg-blue-600 hover:bg-blue-700 text-white';
-  const secondaryBtn = isHighContrast
-    ? 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white'
-    : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700';
 
   const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeSection = isLargeFont ? 'text-xl' : 'text-lg';
@@ -137,13 +191,94 @@ const RecommendScreen: React.FC = () => {
           </h1>
           <p className={`mt-1 ${subtleColor} ${sizeSub}`}>
             {lang === 'en'
-              ? 'Recommendations and the full directory'
-              : '맞춤 추천과 전체 민원 목록'}
+              ? 'Search, browse, or get a personalized match'
+              : '검색·둘러보기·맞춤 추천 한 곳에서'}
           </p>
         </div>
 
-        {/* 추천 섹션 */}
-        {recs.length > 0 && (
+        {/* 검색 박스 */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); runSearch(); }}
+          className="mt-5"
+        >
+          <div className="relative">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${subtleColor}`} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={lang === 'en' ? 'Search civil services...' : '예: 기초연금, 건강보험, 외국인 등록...'}
+              className={`w-full pl-10 pr-28 py-3.5 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeCardDesc}`}
+            />
+            <button
+              type="submit"
+              disabled={!query.trim() || searchLoading}
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ctaBtn} text-sm`}
+            >
+              {searchLoading
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : (lang === 'en' ? 'Search' : '검색')}
+            </button>
+          </div>
+        </form>
+
+        {/* AI 검색 결과 */}
+        {searchHits !== null && (
+          <section className="mt-7">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
+                  {lang === 'en' ? 'Search results' : '검색 결과'}
+                </h2>
+                <span className={`font-medium ${subtleColor} ${sizeCardDesc}`}>
+                  &quot;{searchedQuery}&quot;
+                </span>
+              </div>
+              <button
+                onClick={clearSearch}
+                className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                {lang === 'en' ? 'Clear' : '지우기'}
+              </button>
+            </div>
+
+            {searchHits.length === 0 ? (
+              <div className={`mt-3 rounded-2xl border ${cardBg} p-6 text-center`}>
+                <p className={`${titleColor} ${sizeCardTitle}`}>
+                  {lang === 'en' ? 'No matches found' : '검색 결과가 없어요'}
+                </p>
+                <p className={`mt-1 ${subtleColor} text-sm`}>
+                  {lang === 'en' ? 'Try different keywords or browse below' : '다른 키워드로 시도하거나 아래 전체 목록에서 찾아보세요'}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {searchHits.map((item) => (
+                  <article
+                    key={item.id}
+                    className={`rounded-2xl border shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col ${cardBg}`}
+                  >
+                    <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{item.title}</h3>
+                    {item.description && (
+                      <p className={`mt-2 flex-1 leading-relaxed ${descColor} ${sizeCardDesc}`}>{item.description}</p>
+                    )}
+                    <button
+                      onClick={() => navigateToService(item.url)}
+                      className={`mt-5 w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${ctaBtn} ${sizeCardDesc}`}
+                    >
+                      {t.btn}
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* /qa에서 받은 맞춤 추천 (검색 안 했을 때만) */}
+        {recs.length > 0 && searchHits === null && (
           <section className="mt-7">
             <div className="flex items-center gap-2">
               <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
@@ -179,14 +314,14 @@ const RecommendScreen: React.FC = () => {
           </section>
         )}
 
-        {/* 전체 민원 섹션 */}
+        {/* 전체 민원 */}
         <section className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
               {lang === 'en' ? 'All services' : '전체 민원'}
               {!allLoading && <span className={`ml-2 font-medium ${subtleColor} ${sizeCardDesc}`}>({all.length})</span>}
             </h2>
-            {recs.length === 0 && (
+            {recs.length === 0 && searchHits === null && (
               <button
                 onClick={() => router.push('/qa')}
                 className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}
@@ -194,17 +329,6 @@ const RecommendScreen: React.FC = () => {
                 {lang === 'en' ? '+ Get recommendations' : '+ 맞춤 추천 받기'}
               </button>
             )}
-          </div>
-
-          <div className="mt-3 relative">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${subtleColor}`} />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={lang === 'en' ? 'Search by name or ministry...' : '민원명 / 부처로 검색...'}
-              className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeCardDesc}`}
-            />
           </div>
 
           {allLoading ? (
@@ -215,7 +339,7 @@ const RecommendScreen: React.FC = () => {
           ) : filteredAll.length === 0 ? (
             <div className={`mt-4 rounded-2xl border ${cardBg} p-6 text-center`}>
               <p className={`${titleColor} ${sizeCardTitle}`}>
-                {lang === 'en' ? 'No services match your search' : '검색 결과가 없어요'}
+                {lang === 'en' ? 'No services match' : '검색 결과가 없어요'}
               </p>
             </div>
           ) : (
