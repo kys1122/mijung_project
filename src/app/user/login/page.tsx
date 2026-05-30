@@ -12,18 +12,15 @@ const LoginScreen : React.FC = () => {
   const [password, setPassword] = useState("");
   const [stayLogin,  setStayLogin] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  //백엔드 연동
   const handleLogin = async () => {
-    const apiURL = process.env.NEXT_PUBLIC_API_URL;
-
-    try{
-      const response = await fetch(`${apiURL}/api/v1/auth/login`, {
+    setErrorMsg("");
+    try {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({email, password}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
       const result = await response.json();
@@ -31,11 +28,13 @@ const LoginScreen : React.FC = () => {
       if (result.success) {
         localStorage.setItem('accessToken', result.data.accessToken);
         localStorage.setItem('refreshToken', result.data.refreshToken);
-
         router.push("/list");
+      } else {
+        setErrorMsg(result.message ?? "로그인에 실패했습니다.");
       }
-    } catch(error) {
+    } catch (error) {
       console.error("로그인 중 에러 발생 : ", error);
+      setErrorMsg("네트워크 오류가 발생했습니다.");
     }
   }
 
@@ -81,6 +80,9 @@ const LoginScreen : React.FC = () => {
             로그인 상태 유지
           </span>
         </div>
+        {errorMsg && (
+          <p className="mt-4 text-[#ff0000] text-[18px]">{errorMsg}</p>
+        )}
         <div className='flex flex-col items-center mt-10'>
           <button
             onClick={handleLogin}

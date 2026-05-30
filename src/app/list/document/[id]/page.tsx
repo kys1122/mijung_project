@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import DetailModal from "./detailModal";
 import TopSettings from "@/app/components/TopSettings";
-import axios from "axios";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
+import { apiFetch, getAccessToken } from '../../../lib/api-client';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();
@@ -23,13 +23,10 @@ const DocumentScreen: React.FC = () => {
     const fetchRequiredDocs = async () => {
       if (!id) return;
       try {
-        // 백엔드 실제 엔드포인트 주소 호출
-        const response = await axios.get(`http://localhost:3000/api/required-docs/${id}`);
-        
-        if (response.data) {
-          setDoc(response.data.document || []);       // 백엔드가 준 서류 배열 세팅
-          setPageTitle(response.data.title || "");    // 백엔드가 준 민원 제목 세팅
-        }
+        const res = await apiFetch(`/api/required-docs/${id}`);
+        const data = await res.json();
+        setDoc(data.document || []);
+        setPageTitle(data.title || "");
       } catch (error) {
         console.error("백엔드 데이터 호출 실패:", error);
         setDoc([]);
@@ -39,13 +36,36 @@ const DocumentScreen: React.FC = () => {
     fetchRequiredDocs();
   }, [id]);
 
+  // 진행 단계(required_docs) 기록 — 로그인된 사용자만
+  useEffect(() => {
+    if (!id || !getAccessToken()) return;
+    apiFetch(`/api/my-services/${id}/visit`, {
+      method: 'POST',
+      body: JSON.stringify({ step: 'required_docs' }),
+    }).catch(err => console.error('visit 기록 실패:', err));
+  }, [id]);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
 
   const completedCount = doc.filter((d) => d.isCompleted).length;
 
-  const Complete = (docId: number) => {
-    setDoc(doc.map((d) => (d.id == docId ? { ...d, isCompleted: !d.isCompleted } : d)));
+  const Complete = async (docId: number) => {
+    const target = doc.find((d) => d.id === docId);
+    if (!target) return;
+    const newChecked = !target.isCompleted;
+    setDoc(prev => prev.map((d) => (d.id === docId ? { ...d, isCompleted: newChecked } : d)));
+
+    if (!getAccessToken()) return;
+    try {
+      const res = await apiFetch(`/api/checklist/${id}/progress`, {
+        method: 'PUT',
+        body: JSON.stringify({ item_id: `doc_${docId}`, checked: newChecked }),
+      });
+      if (!res.ok) throw new Error(`progress ${res.status}`);
+    } catch (err) {
+      console.error('진행도 저장 실패:', err);
+    }
   };
 
   const handleOpenDetail = (docItem: any) => {

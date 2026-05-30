@@ -7,6 +7,7 @@ import TopSettings from "../../../components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
+import { apiFetch, getAccessToken } from '../../../lib/api-client';
 
 const ProcedureScreen : React.FC = () => {
   const router = useRouter();
@@ -40,13 +41,13 @@ const ProcedureScreen : React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/checklist/${id}?userId=temp_user`);
+        const res = await apiFetch(`/api/checklist/${id}`);
         const data = await res.json();
-        
+
         // 백엔드 구조에 맞춰 데이터 세팅
         setStep(data.steps || []);
-        setServiceName({ 
-          ko: data.name, 
+        setServiceName({
+          ko: data.name,
           en: data.nameEn || data.name // 영어 이름이 없으면 한글 이름으로 대체
         });
       } catch (err) {
@@ -58,13 +59,36 @@ const ProcedureScreen : React.FC = () => {
     if (id) fetchData();
   }, [id]);
 
+  // 진행 단계(checklist) 기록 — 로그인된 사용자만
+  useEffect(() => {
+    if (!id || !getAccessToken()) return;
+    apiFetch(`/api/my-services/${id}/visit`, {
+      method: 'POST',
+      body: JSON.stringify({ step: 'checklist' }),
+    }).catch(err => console.error('visit 기록 실패:', err));
+  }, [id]);
+
   // 진행률 계산 (백엔드에서 가져온 step 배열 기준)
   const completedCount = step.filter((s:any) => s.isCompleted).length;
   const progress = step.length > 0 ? (completedCount / step.length) * 100 : 0;
 
-  // 완료 상태 토글 (UI 즉시 반영)
-  const Complete = (stepId: number) => {
-    setStep(step.map((s: any) => s.id == stepId ? {...s, isCompleted: !s.isCompleted} : s));
+  // 완료 상태 토글: UI 즉시 반영 후 백엔드에 저장
+  const Complete = async (stepId: number) => {
+    const target = step.find((s: any) => s.id === stepId);
+    if (!target) return;
+    const newChecked = !target.isCompleted;
+    setStep(prev => prev.map((s: any) => s.id === stepId ? {...s, isCompleted: newChecked} : s));
+
+    if (!getAccessToken()) return; // 비로그인은 UI만 토글
+    try {
+      const res = await apiFetch(`/api/checklist/${id}/progress`, {
+        method: 'PUT',
+        body: JSON.stringify({ item_id: `step_${stepId}`, checked: newChecked }),
+      });
+      if (!res.ok) throw new Error(`progress ${res.status}`);
+    } catch (err) {
+      console.error('진행도 저장 실패:', err);
+    }
   };
 
   // 음성으로 듣기 (/api/tts)

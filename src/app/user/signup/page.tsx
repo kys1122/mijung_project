@@ -8,8 +8,8 @@ import { useRouter } from "next/navigation";
 
 const SignupScreen : React.FC = () => {
   const router = useRouter();
-  const {register, formState:{errors}, watch } = useForm({mode: 'onChange'});
-  
+  const {register, handleSubmit, formState:{errors}, watch } = useForm({mode: 'onChange'});
+
   //현재 비밀번호 감시
   const password = watch("password");
 
@@ -23,7 +23,7 @@ const SignupScreen : React.FC = () => {
 
   const onSubmit = async(data:any) => {
     try{
-      const response = await fetch(`/api/auth/register`, {
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {'Content-Type' : 'application/json'},
         body: JSON.stringify({
@@ -41,24 +41,25 @@ const SignupScreen : React.FC = () => {
       }
     }catch(error){
       console.error("회원가입 중 에러 발생 : ", error);
+      alert("네트워크 오류가 발생했습니다.");
     }
   }
 
   return(
-    <div className='pt-[50px] items-center flex flex-col bg-white'>
+    <form onSubmit={handleSubmit(onSubmit)} className='pt-[50px] items-center flex flex-col bg-white'>
         <h1 className='w-full max-w-[450px] text-[36px] font-bold text-black mx-10'>
           회원가입
         </h1>
         <div className="w-[340px] pt-[40px] flex flex-col">
           <label className="text-[24px] font-medium">이메일</label>
           <input
-            {...register("Email", {required: true, pattern: emailRegex})}
+            {...register("email", {required: true, pattern: emailRegex})}
             className="px-5 py-3 border border-[#000000] rounded-[13px] focus:outline-none focus:border-[#009DFF] text-[22px] text-black"
             type="email"
             placeholder="이메일 입력">
           </input>
-          {errors?.Email?.type === 'required' && <p className="text-[#ff0000]">이메일을 입력해주세요.</p>}
-          {errors?.Email?.type === 'pattern' && <p className="text-[#ff0000]">이메일 양식에 맞게 입력해주세요.</p>}
+          {errors?.email?.type === 'required' && <p className="text-[#ff0000]">이메일을 입력해주세요.</p>}
+          {errors?.email?.type === 'pattern' && <p className="text-[#ff0000]">이메일 양식에 맞게 입력해주세요.</p>}
         </div>
         <div className="w-[340px] pt-[25px] flex flex-col">
           <label className="text-[24px] font-medium">비밀번호</label>
@@ -100,7 +101,7 @@ const SignupScreen : React.FC = () => {
           {errors?.chkPassword?.type === 'validate' && <p className="text-[#ff0000]">비밀번호가 일치하지 않습니다.</p>}
         </div>
         <div className='flex flex-col items-center mt-20'>
-          <button className='w-[315px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
+          <button type="submit" className='w-[315px] py-[5px] bg-[#009DFF] hover:bg-[#0089e0] active:scale-[0.98] transition-all rounded-[35px] text-white text-[36px] font-bold'>
             가입하기
           </button>
         </div>
@@ -114,7 +115,7 @@ const SignupScreen : React.FC = () => {
             로그인
           </Link>
         </div>
-    </div>
+    </form>
   );
 }
 
