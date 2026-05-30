@@ -84,22 +84,6 @@ export default function ChatPage() {
     return sid;
   })();
 
-  // 챗봇 백엔드가 더 맞춤형 답변을 주도록 user_type / visa_type을 같이 전달
-  const userTypeFromAnswers = (ans: Record<string, string>): string => {
-    const allVals = Object.values(ans).join(' ');
-    if (allVals.includes('외국인')) return 'foreigner';
-    if (allVals.includes('노인') || allVals.includes('고령')) return 'senior';
-    if (allVals.includes('저소득')) return 'low_income';
-    return 'general';
-  };
-  const visaFromAnswers = (ans: Record<string, string>): string => {
-    for (const val of Object.values(ans)) {
-      const m = String(val).match(/[A-Z]-?\d+/);
-      if (m) return m[0].replace(/(\w)(\d)/, '$1-$2');
-    }
-    return '';
-  };
-
   // --- 진입 시 ---
   useEffect(() => {
     if (initRef.current) return;
@@ -198,33 +182,17 @@ export default function ChatPage() {
     }
   };
 
-  // 트리 답변 → 챗봇 /analyze 호출 → 후보 카드
-  // 챗봇의 /analyze는 user_type/age_group/category/detail/lang/visa_type 인터페이스
-  // (chatbot/app.py:486). /classify(분류 5건 제한)보다 풍부한 RAG 매칭.
+  // 트리가 done:true 주면 챗봇이 정의한 /classify 흐름 그대로 호출
+  // (chatbot/app.py:1385). 트리 답변을 그대로 context로 전달.
   const runClassify = async (finalAnswers: Record<string, string>, sid: number | null) => {
     setMessages(prev => [...prev, { kind: 'thinking', role: 'assistant' }]);
     try {
-      // 트리 첫 답변(question_id=1)이 user_type, 나머지는 detail에 합쳐 챗봇이 매칭
-      const userType = finalAnswers['1'] ?? userTypeFromAnswers(finalAnswers);
-      const detail = Object.entries(finalAnswers)
-        .filter(([k]) => k !== '1')
-        .map(([, v]) => v)
-        .join(' ');
-      const payload = {
-        user_type: userType,
-        age_group: '',
-        category: '',
-        detail,
-        lang,
-        visa_type: visaFromAnswers(finalAnswers),
-      };
-      const res = await fetch('/api/analyze', {
+      const res = await fetch('/api/qa/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ context: finalAnswers, session_id: sid }),
       });
       const data = await res.json();
-      // 챗봇 응답 그대로 전달 (가공 X)
       const matched: Service[] = (data?.matched_services ?? data?.services ?? data?.results ?? []) as Service[];
       const intro = matched.length > 0
         ? (lang === 'en'
@@ -258,14 +226,8 @@ export default function ChatPage() {
       { kind: 'thinking', role: 'assistant' },
     ]);
 
-    const userType = (() => {
-      // answers에서 user_type 추정 (트리의 어떤 답변이든 키워드 보고 결정)
-      const allVals = Object.values(answers).join(' ');
-      if (allVals.includes('외국인')) return 'foreigner';
-      if (allVals.includes('노인') || allVals.includes('고령')) return 'senior';
-      if (allVals.includes('저소득')) return 'low_income';
-      return 'general';
-    })();
+    // user_type은 트리 1번 답변값을 그대로 전달 (챗봇이 트리에서 user_type을 묻도록 정의)
+    const userType = answers['1'] ?? '';
 
     try {
       const [detailRes, checkRes] = await Promise.all([
@@ -312,17 +274,12 @@ export default function ChatPage() {
     const sid = await ensureChatSession();
     if (sid) await saveMessage(sid, 'user', text);
 
-    const userType = userTypeFromAnswers(answers);
-    const visaType = visaFromAnswers(answers);
-
     try {
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: text, lang,
-          user_type: userType,
-          visa_type: visaType,
           history: messages.filter(m => m.kind === 'text').map((m: any) => ({ role: m.role, content: m.content })),
           session_id: externalSessionId,
         }),
@@ -383,8 +340,6 @@ export default function ChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question, lang,
-          user_type: userTypeFromAnswers(answers),
-          visa_type: visaFromAnswers(answers),
           session_id: externalSessionId,
         }),
       });
