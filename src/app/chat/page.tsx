@@ -57,6 +57,14 @@ export default function ChatPage() {
     return '';
   };
 
+  const visaFromContext = (): string => {
+    try {
+      const ctx = JSON.parse(localStorage.getItem('final_context') ?? 'null');
+      if (ctx && typeof ctx.visa_type === 'string') return ctx.visa_type;
+    } catch {}
+    return '';
+  };
+
   const sessionId = (() => {
     if (typeof window === 'undefined') return undefined;
     let sid = localStorage.getItem('chat_session_id');
@@ -82,6 +90,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           question: text,
           user_type: userTypeFromContext(),
+          visa_type: visaFromContext(),
           lang,
           history: messages.map(m => ({ role: m.role, content: m.content })),
           session_id: sessionId,
@@ -152,6 +161,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           question,
           user_type: userTypeFromContext(),
+          visa_type: visaFromContext(),
           lang,
           history: current.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
           session_id: sessionId,
