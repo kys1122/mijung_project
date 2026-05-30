@@ -1,5 +1,6 @@
 import { executeQuery } from "@/lib/database";
 import { NextResponse } from "next/server";
+import { getUserIdFromRequest } from "@/lib/auth";
 
 const getPureLink = (rawLink : string | null) => {
     if (!rawLink) return null;
@@ -30,8 +31,7 @@ export async function GET(request : Request, {params} : {params: Promise<{ servi
         const resolvedParams = await params;
         const service_id = decodeURIComponent(resolvedParams.service_id);
 
-        const {searchParams} = new URL(request.url);
-        const userId = searchParams.get('userId') || 'temp_user';
+        const userId = getUserIdFromRequest(request);
 
         // DB 조회 (주소창에 ID 숫자가 오든, 한글 service_name이 오든 둘 다 찾을 수 있게 수정)
         const rows = `
@@ -47,8 +47,9 @@ export async function GET(request : Request, {params} : {params: Promise<{ servi
 
         // 유저 진행도(체크박스) 조회
         const progress = `SELECT item_id FROM checklist_progress WHERE user_id = ? AND service_id = ?`;
-        const progressRows = await executeQuery(progress, [userId, service_id]);
-        const completedItems = progressRows.map((p: any) => p.item_id);
+        const completedItems: string[] = userId
+            ? (await executeQuery(progress, [String(userId), data.id])).map((p: any) => p.item_id)
+            : [];
 
         // DB의 raw_required_docs에서 줄바꿈 기반으로 서류를 분리 및 매핑
         const documents = [];

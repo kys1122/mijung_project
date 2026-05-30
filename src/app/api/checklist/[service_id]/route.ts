@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database'; 
+import { executeQuery } from '@/lib/database';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 //  URL에서 괄호, 공백, 한글을 제거하고 순수 주소만 추출하는 안전장치 함수
 const getPureLink = (rawLink: string | null) => {
@@ -18,8 +19,7 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
         const resolvedParams = await params;
         const service_id = decodeURIComponent(resolvedParams.service_id);
 
-        const {searchParams} = new URL(request.url);
-        const userId = searchParams.get('userId') || 'temp_user';
+        const userId = getUserIdFromRequest(request);
 
         // analyze 결과로부터 넘어온 service_name도 지원
         const serviceSQL = `
@@ -33,10 +33,11 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
         if (!serviceRows || serviceRows.length === 0) return NextResponse.json({ message: "Data not found" }, {status: 404});
         const data = serviceRows[0];
 
-        const progressSql = 
+        const progressSql =
             `SELECT item_id FROM checklist_progress WHERE user_id = ? AND service_id = ?`;
-        const progressRows = await executeQuery(progressSql, [userId,  service_id]);
-        const completedItems = progressRows.map((p:any) => p.item_id);
+        const completedItems: string[] = userId
+            ? (await executeQuery(progressSql, [String(userId), data.id])).map((p: any) => p.item_id)
+            : [];
 
         // getPureLink 함수를 적용하여 링크 정제
         const steps = [
