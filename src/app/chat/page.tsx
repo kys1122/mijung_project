@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History, ClipboardList, ArrowRight } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -39,8 +39,13 @@ export default function ChatPage() {
     if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
-    setHasContext(!!localStorage.getItem('analyze_result'));
-  }, []);
+    // 본인 정보(/qa 결과) 없으면 선택 화면으로 자동 이동
+    if (!localStorage.getItem('analyze_result')) {
+      router.replace('/qa?next=/chat');
+      return;
+    }
+    setHasContext(true);
+  }, [router]);
   const handleLang = (v: LangCode) => { setLang(v); localStorage.setItem('app_lang', v); };
   const handleContrast = (v: boolean) => { setIsHighContrast(v); localStorage.setItem('app_contrast', String(v)); };
   const handleFont = (v: boolean) => { setIsLargeFont(v); localStorage.setItem('app_font', String(v)); };
@@ -328,33 +333,7 @@ export default function ChatPage() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 flex flex-col gap-3 min-h-0">
-          {messages.length === 0 && hasContext === false && (
-            <div className={`mt-6 rounded-2xl border p-5 ${isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-blue-50 border-blue-100'}`}>
-              <div className="flex items-start gap-3">
-                <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-white'}`}>
-                  <ClipboardList className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-semibold ${titleColor} ${sizeBubble}`}>
-                    {lang === 'en' ? "Let's get to know you first" : '먼저 몇 가지 알려주세요'}
-                  </p>
-                  <p className={`mt-1 ${subtleColor} text-sm`}>
-                    {lang === 'en'
-                      ? 'A few questions help the bot give more accurate answers.'
-                      : '본인 정보를 입력하면 챗봇이 더 정확하게 답해드려요.'}
-                  </p>
-                  <button
-                    onClick={() => router.push('/qa?next=/chat')}
-                    className={`mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold transition-colors ${sendBtn}`}
-                  >
-                    {lang === 'en' ? 'Start' : '정보 입력하기'}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {messages.length === 0 && (
+          {messages.length === 0 && hasContext && (
             <div className={`mt-8 flex flex-col items-center text-center ${subtleColor}`}>
               <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-blue-50'}`}>
                 <Sparkles className={`w-7 h-7 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
