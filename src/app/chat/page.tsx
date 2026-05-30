@@ -35,8 +35,9 @@ const STEPS: { key: StepKey; question: { ko: string; en: string }; options?: { k
     key: 'service',
     question: { ko: '어떤 민원 유형이 필요하세요?', en: 'What kind of service do you need?' },
     options: {
-      ko: ['민원/서류', '복지', '주거', '의료', '일자리', '기타/모르겠음'],
-      en: ['Civil/Documents', 'Welfare', 'Housing', 'Medical', 'Jobs', 'Other/Not sure'],
+      // 챗봇 백엔드가 인식하는 한글 카테고리 (chatbot/app.py:486-559)
+      ko: ['민원서류', '복지', '주거', '의료', '돌봄', '생활지원', '출입국', '교육·문화', '잘 모르겠어요'],
+      en: ['Civil documents', 'Welfare', 'Housing', 'Medical', 'Care', 'Living support', 'Immigration', 'Education/Culture', 'Not sure'],
     },
   },
   {
@@ -59,14 +60,33 @@ const mapAgeGroup = (val: string): string => {
   if (!m) return '';
   return parseInt(m[1], 10) >= 60 ? '60대 이상' : `${m[1]}대`;
 };
+// 챗봇 카테고리(한글) 그대로 통과 + 영어/구버전 옵션 한글 매핑
 const mapCategory = (val: string): string => {
-  if (!val) return '';
+  if (!val) return '잘 모르겠어요';
   const map: Record<string, string> = {
-    '민원/서류': '민원서류', '민원': '민원서류',
-    '복지': '복지', '주거': '주거', '의료': '의료', '일자리': '', '기타/모르겠음': '',
-    'Civil/Documents': '민원서류', Welfare: '복지', Housing: '주거', Medical: '의료', Jobs: '', 'Other/Not sure': '',
+    // 영어 라벨 → 한글 카테고리
+    'Civil documents': '민원서류',
+    'Welfare': '복지',
+    'Housing': '주거',
+    'Medical': '의료',
+    'Care': '돌봄',
+    'Living support': '생활지원',
+    'Immigration': '출입국',
+    'Education/Culture': '교육·문화',
+    'Not sure': '잘 모르겠어요',
+    // 구버전 한국어 옵션 호환
+    '민원/서류': '민원서류',
+    '민원': '민원서류',
+    '일자리': '잘 모르겠어요',
+    '기타/모르겠음': '잘 모르겠어요',
+    'Jobs': '잘 모르겠어요',
+    'Civil/Documents': '민원서류',
+    'Other/Not sure': '잘 모르겠어요',
   };
-  return val in map ? map[val] : val;
+  if (val in map) return map[val];
+  // 챗봇이 알고 있는 한글 카테고리는 그대로
+  const known = ['민원서류', '복지', '주거', '의료', '돌봄', '생활지원', '출입국', '교육·문화', '잘 모르겠어요'];
+  return known.includes(val) ? val : '잘 모르겠어요';
 };
 
 type Msg =
