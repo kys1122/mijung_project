@@ -37,8 +37,8 @@ const MainScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 pt-12 pb-12">
-      <div className="w-full max-w-[420px]">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-16 pb-12">
+      <div className="w-full max-w-md sm:max-w-lg">
         {loading ? (
           <div className="h-16" />
         ) : user ? (

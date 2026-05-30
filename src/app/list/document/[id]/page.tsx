@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Check, ChevronLeft } from "lucide-react";
+import { Building2, Check, ChevronLeft, FileText } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import DetailModal from "./detailModal";
@@ -15,10 +15,9 @@ const DocumentScreen: React.FC = () => {
   const params = useParams();
   const id = params.id as string;
 
-  const [doc, setDoc] = useState<any[]>([]); // 
-  const [pageTitle, setPageTitle] = useState<string>(""); // 실시간 민원명을 담을 상태
+  const [doc, setDoc] = useState<any[]>([]);
+  const [pageTitle, setPageTitle] = useState<string>("");
 
-  // ---  백엔드 실시간 API 데이터 로딩  ---
   useEffect(() => {
     const fetchRequiredDocs = async () => {
       if (!id) return;
@@ -32,11 +31,9 @@ const DocumentScreen: React.FC = () => {
         setDoc([]);
       }
     };
-
     fetchRequiredDocs();
   }, [id]);
 
-  // 진행 단계(required_docs) 기록 — 로그인된 사용자만
   useEffect(() => {
     if (!id || !getAccessToken()) return;
     apiFetch(`/api/my-services/${id}/visit`, {
@@ -77,7 +74,6 @@ const DocumentScreen: React.FC = () => {
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
-  // --- 2. 로컬 스토리지 UI 설정 로딩 ---
   useEffect(() => {
     const savedLang = localStorage.getItem("app_lang") ?? '';
     const savedContrast = localStorage.getItem("app_contrast") === "true";
@@ -93,83 +89,129 @@ const DocumentScreen: React.FC = () => {
 
   const t = useTranslations<DocumentStrings>('document', DOC_STRINGS as unknown as { ko: DocumentStrings; en: DocumentStrings }, lang);
 
-  const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
-  const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
-  const textClass = isHighContrast ? "text-white" : "text-black";
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
+  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
+  const cardDone = isHighContrast ? 'bg-zinc-900 border-yellow-300 opacity-80' : 'bg-slate-100 border-slate-200';
+  const summaryBox = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-blue-50 border-blue-100';
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
+  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
+  const readBtn = isHighContrast
+    ? 'bg-yellow-400 text-black hover:bg-yellow-300'
+    : 'bg-blue-600 text-white hover:bg-blue-700';
 
-  return(
-    <div className={`flex flex-col items-center ${themeClass}`}>
-      <div className="w-full max-w-[450px]">
-        <header className={`relative w-full max-w-[450px] py-4 justify-between ${headerBorder}`}>
+  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
+  const sizeBody = isLargeFont ? 'text-base sm:text-lg' : 'text-sm sm:text-base';
+  const sizeDocTitle = isLargeFont ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl';
+  const sizeBtn = isLargeFont ? 'text-lg' : 'text-base';
+
+  return (
+    <div className={`min-h-screen ${pageBg}`}>
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-16">
+        <header className="flex items-center justify-between gap-2">
           <button
             onClick={() => router.back()}
-            className="flex items-center activate:opacity-40 transition-opacity gap-1"
+            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
           >
-            <ChevronLeft className={`w-8 h-8 ${textClass}`}/>
-            <span className={`${isLargeFont ? 'text-[26px] ': 'text-[22px]'} ${textClass}`}>{t.back}</span>
+            <ChevronLeft className="w-6 h-6" />
+            <span className={sizeBody}>{t.back}</span>
           </button>
-          <TopSettings 
-            lang={lang} setLang={handleLang} 
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast} 
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
+          <TopSettings
+            lang={lang} setLang={handleLang}
+            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
           />
         </header>
-        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{pageTitle || t.docsFallback}</h1>
-        <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 rounded-[15px] ${isHighContrast ? "bg-zinc-800 border-2 border-[#ffd000]" : "bg-[#E9F1FF]"}`}>
-          <h2 className={`mb-3 ${isLargeFont ? 'text-[30px]' : 'text-[26px]'} font-bold ${textClass}`}>{t.need} ({completedCount}/{doc.length})</h2>
-          <div className="flex flex-col">
-            {doc.map((doc) => (
-              <div key={doc.id} className="flex items-center">
-                <div className="w-6 h-6 flex shrink-0 items-center justify-center border border-black rounded-full bg-white">
-                  {doc.isCompleted && <Check className="w-5.5 h-5.5 text-black"/>}
-                </div>
-                <span className={`ml-1.5 ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-medium ${isHighContrast ? (doc.isCompleted ? 'text-[#8d8d8d] line-through' : 'text-white') : (doc.isCompleted ? 'text-[#B3B3B3] line-through' : 'text-black')}`}>
-                  {doc.title}
+
+        <h1 className={`mt-4 font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
+          {pageTitle || t.docsFallback}
+        </h1>
+
+        <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
+          <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
+            {t.need} <span className={subtleColor}>({completedCount}/{doc.length})</span>
+          </h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {doc.map((d) => (
+              <li key={d.id} className="flex items-center gap-2">
+                <span className={`w-5 h-5 shrink-0 flex items-center justify-center rounded-full border-2 ${d.isCompleted ? checkboxOn : checkboxOff}`}>
+                  {d.isCompleted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                 </span>
-              </div>
+                <span className={`${sizeBody} ${
+                  d.isCompleted
+                    ? (isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through')
+                    : titleColor
+                }`}>
+                  {d.title}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
-        <div className="flex flex-col gap-7 p-5 mt-8">
-          {doc.map((doc => (
-            <div key={doc.id} className={`p-4 py-3 border-2 rounded-[10px] ${isHighContrast ? (doc.isCompleted ? 'border-[#ffd000]' : 'border-white') : (doc.isCompleted ? 'border-[#8F8F8F] bg-[#DBDBDB]' : 'border-[#9A9A9A] bg-white')}`}>
-              <h2 className={`${isLargeFont ? 'text-[34px]' : 'text-[30px]'} font-bold ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}>
-                {doc.id}. {doc.title}
-              </h2>
-              <p className={`mx-2 ${isLargeFont ? 'text-[28px]' : 'text-[24px]'} ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}>
-                {doc.description}
-              </p>
-              <div className="px-1.5 mt-6 flex items-center">
-                <Building2 className={`${isLargeFont ? 'w-9 h-9' : 'w-7 h-7'} ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}/>
-                <p className={`pl-1.5 ${isLargeFont ? 'text-[30px]' : 'text-[26px]'} font-medium ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}>발급기관</p>
+        <div className="mt-6 flex flex-col gap-4">
+          {doc.map((d) => (
+            <article
+              key={d.id}
+              className={`rounded-2xl border shadow-sm transition-all ${d.isCompleted ? cardDone : cardBg}`}
+            >
+              <div className="p-5">
+                <div className="flex items-start gap-2">
+                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold shrink-0 ${
+                    isHighContrast ? 'bg-yellow-400 text-black' : 'bg-blue-100 text-blue-700'
+                  } ${sizeBody}`}>
+                    {d.id}
+                  </span>
+                  <h2 className={`flex-1 font-bold ${
+                    d.isCompleted ? subtleColor : titleColor
+                  } ${sizeDocTitle}`}>
+                    {d.title}
+                  </h2>
+                </div>
+                <p className={`mt-3 leading-relaxed ${
+                  d.isCompleted ? subtleColor : descColor
+                } ${sizeBody}`}>
+                  {d.description}
+                </p>
+                <div className="mt-4 flex items-center gap-2">
+                  <Building2 className={`w-5 h-5 ${d.isCompleted ? subtleColor : descColor}`} />
+                  <span className={`font-medium ${d.isCompleted ? subtleColor : descColor} ${sizeBody}`}>
+                    {d.institution}
+                  </span>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-2">
+                  <button
+                    onClick={() => handleOpenDetail(d)}
+                    className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${readBtn} ${sizeBtn}`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {t.read}
+                  </button>
+
+                  <button
+                    onClick={() => Complete(d.id)}
+                    className="mt-1 flex items-center gap-2"
+                  >
+                    <span className={`w-7 h-7 flex items-center justify-center rounded-md border-2 transition-colors ${d.isCompleted ? checkboxOn : checkboxOff}`}>
+                      {d.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+                    </span>
+                    <span className={`font-semibold ${d.isCompleted ? subtleColor : titleColor} ${sizeBody}`}>
+                      {t.done}
+                    </span>
+                  </button>
+                </div>
               </div>
-              <p className={`mx-2.5 ${isLargeFont ? 'text-[24px]' : 'text-[20px]'} ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}>{doc.institution}</p>
-              <div className="flex flex-col">
-                <button
-                  onClick={() => handleOpenDetail(doc)}
-                  className={`mb-2 mx-2.5 mt-6 py-1.5 flex items-center justify-center rounded-[10px] ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-bold ${isHighContrast ? 'bg-[#ffd000] text-black': 'bg-[#3F85FF] text-white'}`}
-                >
-                  {t.read}
-                </button>
-                <DetailModal 
-                  isOpen={modalOpen} 
-                  onClose={() => setModalOpen(false)} 
-                  data={selectedDoc} 
-                />
-                <button
-                  onClick={() => Complete(doc.id)}
-                  className="mt-4 flex items-center"
-                >
-                  <div className={`w-9 h-9 flex items-center justify-center ${doc.isCompleted ? 'bg-[#8F8F8F]' : 'bg-[#F1F1F1]'}`}>
-                    {doc.isCompleted && <Check className="text-white w-7 h-7"/>}
-                  </div>
-                  <span className={`ml-2 ${isLargeFont ? 'text-[28px]' : 'text-[24px]'} font-bold ${isHighContrast ? (doc.isCompleted ? 'text-[#858585]' : 'text-white') : (doc.isCompleted ? 'text-[#858585]' : 'text-black')}`}>{t.done}</span>
-                </button>
-              </div>
-            </div>
-          )))}
+            </article>
+          ))}
         </div>
+        <DetailModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          data={selectedDoc}
+        />
       </div>
     </div>
   )

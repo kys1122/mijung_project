@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Mic, ChevronDown, Sparkles, X } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import ChatFab from '../components/ChatFab';
 import { useTranslations } from '../lib/i18n';
@@ -11,8 +12,7 @@ import { COMMON_VISAS, normalizeVisa } from '../lib/visa';
 
 export default function QaPage() {
   const router = useRouter();
-  
-  // --- 상태 관리 ---
+
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
@@ -23,52 +23,23 @@ export default function QaPage() {
   const [modalType, setModalType] = useState<'age' | 'service' | null>(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
-  // --- [추가] 페이지 로드 시 localStorage에서 설정 불러오기 ---
   useEffect(() => {
     const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
     const savedFont = localStorage.getItem('app_font') === 'true';
-
     if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
-  // --- [추가] 설정 변경 시 localStorage에 저장하는 핸들러 ---
-  const handleLang = (newLang: LangCode) => {
-    setLang(newLang);
-    localStorage.setItem('app_lang', newLang);
-  };
+  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
+  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
+  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
-  const handleContrast = (val: boolean) => {
-    setIsHighContrast(val);
-    localStorage.setItem('app_contrast', String(val));
-  };
-
-  const handleFont = (val: boolean) => {
-    setIsLargeFont(val);
-    localStorage.setItem('app_font', String(val));
-  };
-
-  // --- 음성 녹음 관련 Ref ---
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   const t = useTranslations<QaStrings>('qa', QA_STRINGS as unknown as { ko: QaStrings; en: QaStrings }, lang);
-
-  // --- 비즈니스 로직 (세션 복원, 음성 인식 등) ---
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const response = await fetch('/api/v1/questions/session/current-user');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.answer_json) setSelections(data.answer_json);
-        }
-      } catch (e) { console.log("진행 중인 세션 없음"); }
-    };
-    fetchSession();
-  }, []);
 
   const handleStartVoice = async () => {
     try {
@@ -79,7 +50,7 @@ export default function QaPage() {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       recorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        await uploadVoice(audioBlob); 
+        await uploadVoice(audioBlob);
       };
       recorder.start();
       setIsVoiceModalOpen(true);
@@ -109,10 +80,6 @@ export default function QaPage() {
     setIsSelectModalOpen(false);
   };
 
-  // qa 선택값 → /analyze 요청 페이로드 매핑 (서버 실제 키 사용)
-  // 서버 /options: user_types=["노인/고령자","저소득층","외국인","해당없음"],
-  //                age_groups=["10대".."60대 이상"],
-  //                categories=["민원서류","복지","주거","의료","돌봄","생활지원","출입국","교육·문화"]
   const mapUserType = (t: string): string => {
     if (t.includes('외국인') || t.toLowerCase().includes('foreigner')) return '외국인';
     if (t.includes('노인') || t.toLowerCase().includes('senior')) return '노인/고령자';
@@ -120,7 +87,6 @@ export default function QaPage() {
     return '해당없음';
   };
   const mapAgeGroup = (a: string): string => {
-    // qa(ko)는 이미 '10대'/'60대 이상' 형식; qa(en)은 '10s'/'60s or older'
     if (!a) return '';
     if (/^\d+대/.test(a) || a.includes('이상')) return a;
     const m = a.match(/(\d+)/);
@@ -130,18 +96,8 @@ export default function QaPage() {
   const mapCategory = (s: string): string => {
     if (!s) return '';
     const map: Record<string, string> = {
-      // 한국어 qa 옵션 → 서버 카테고리
-      '민원': '민원서류',
-      '복지': '복지',
-      '주거': '주거',
-      '의료': '의료',
-      '일자리': '', // 서버에 매칭되는 카테고리 없음 → 빈 값 (전체 검색)
-      // 영어 qa 옵션
-      'Civil Service': '민원서류',
-      Welfare: '복지',
-      Housing: '주거',
-      Medical: '의료',
-      Jobs: '',
+      '민원': '민원서류', '복지': '복지', '주거': '주거', '의료': '의료', '일자리': '',
+      'Civil Service': '민원서류', Welfare: '복지', Housing: '주거', Medical: '의료', Jobs: '',
     };
     return s in map ? map[s] : s;
   };
@@ -149,7 +105,6 @@ export default function QaPage() {
   const handleSubmit = async () => {
     const userContext = { ...selections, lang, submitted_at: new Date().toISOString() };
     localStorage.setItem('final_context', JSON.stringify(userContext));
-
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
@@ -168,70 +123,79 @@ export default function QaPage() {
         localStorage.setItem('analyze_result', JSON.stringify(data));
       }
     } catch (e) { console.error('analyze 호출 실패:', e); }
-
     router.push('/list');
   };
 
-  // --- 스타일 설정 ---
-  const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
-  const cardClass = isHighContrast ? "border-2 border-white bg-black" : "border border-gray-300 bg-[#f0f7ff]";
-  const buttonClass = isHighContrast ? "bg-[#FDC700] text-black" : "bg-[#009DFF] text-white";
-  const buttonClass2 = isHighContrast ? "bg-[#FDC700] text-black" : "bg-[#004a99] text-white";
-  const fontSizeClass = isLargeFont ? "text-[26px]" : "text-[18px]";
-  const inputClass =  isHighContrast ? "bg-black border-white" : "bg-white border-gray-100";
+  // --- 디자인 토큰 ---
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
+  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
+  const inputBg = isHighContrast ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
+  const labelColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const ctaBtn = isHighContrast
+    ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
+    : 'bg-blue-600 hover:bg-blue-700 text-white';
+  const secondaryBtn = isHighContrast
+    ? 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white'
+    : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700';
+  const accent = isHighContrast ? 'accent-yellow-400' : 'accent-blue-600';
+
+  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
+  const sizeBody = isLargeFont ? 'text-lg' : 'text-base';
+  const sizeSection = isLargeFont ? 'text-xl' : 'text-lg';
 
   return (
-    <div className={`min-h-screen flex flex-col items-center pb-10 transition-colors ${themeClass} relative`}>
-      {/* 450px 컨테이너 안에서 상단 여백 pt-4로 다른 페이지와 통일 */}
-      <div className="w-full max-w-[450px] px-6 pt-4 relative">
-        
-        {/* TopSettings: 저장 핸들러를 연결하여 설정 유지 */}
-        <TopSettings 
-          lang={lang} setLang={handleLang} 
-          isHighContrast={isHighContrast} setIsHighContrast={handleContrast} 
-          isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
-        />
-        
-        {/* 제목 섹션: 상단 아이콘들과 겹치지 않게 mt-12 적용 */}
-        <div className="mt-12 mb-8">
-          <h1 className={`${isLargeFont ? 'text-[44px]' : 'text-[38px]'} font-bold tracking-tighter`}>
-            {t.title}
-          </h1>
-          <p className={`${isLargeFont ? 'text-[28px]' : 'text-[24px]'} font-bold opacity-90 mt-1`}>
-            {t.step}
-          </p>
+    <div className={`min-h-screen ${pageBg} relative`}>
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-24">
+        <div className="flex items-start justify-end">
+          <TopSettings
+            lang={lang} setLang={handleLang}
+            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+          />
         </div>
 
-        {/* 메인 질문 카드 섹션 */}
-        <main className="flex flex-col gap-6 items-center">
-          {/* 유형 선택 카드 */}
-          <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
-            <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q1}</h2>
-            <p className="text-[20px] font-bold mb-4">{t.q1_text}</p>
-            <div className={`p-4 rounded-sm flex flex-col gap-3 mb-6 border ${inputClass}`}>
+        <div className="mt-2">
+          <h1 className={`font-bold tracking-tight ${titleColor} ${sizeTitle}`}>{t.title}</h1>
+          <p className={`mt-1 font-medium ${subtleColor} ${sizeBody}`}>{t.step}</p>
+        </div>
+
+        <main className="mt-6 flex flex-col gap-4">
+          {/* 유형 */}
+          <section className={`rounded-2xl border shadow-sm p-5 ${cardBg}`}>
+            <div className="flex items-baseline gap-2">
+              <span className={`font-bold ${titleColor} ${sizeSection}`}>{t.q1}</span>
+              <span className={`font-semibold ${labelColor} ${sizeBody}`}>{t.q1_text}</span>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
               {t.types.map((option: string) => (
-                <label key={option} className="flex items-center gap-3 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="type" 
-                    className={`w-5 h-5 ${isHighContrast ? "accent-[#FDC700]" : "accent-[#009DFF]"}`} 
-                    checked={selections.type === option} 
-                    onChange={() => handleSelect('type', option)} 
+                <label
+                  key={option}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
+                    selections.type === option
+                      ? (isHighContrast ? 'border-yellow-400 bg-zinc-800' : 'border-blue-500 bg-blue-50')
+                      : (isHighContrast ? 'border-zinc-700 hover:bg-zinc-800' : 'border-slate-200 hover:bg-slate-50')
+                  }`}
+                >
+                  <input
+                    type="radio" name="type" className={`w-5 h-5 ${accent}`}
+                    checked={selections.type === option}
+                    onChange={() => handleSelect('type', option)}
                   />
-                  <span className={`${fontSizeClass} ${isHighContrast ? "text-white" : "text-black"} font-semibold`}>{option}</span>
+                  <span className={`font-semibold ${titleColor} ${sizeBody}`}>{option}</span>
                 </label>
               ))}
             </div>
-            <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>
-              {t.btnVoice}
-            </button>
           </section>
 
-          {/* 비자 종류 선택 카드 (외국인 전용) */}
+          {/* 비자 (외국인) */}
           {(selections.type === '외국인' || selections.type === 'Foreigner') && (
-            <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
-              <h2 className="text-[32px] font-bold mb-1 leading-none">1-1.</h2>
-              <p className="text-[20px] font-bold mb-4">{lang === 'ko' ? '비자 종류는?' : 'Visa type?'}</p>
+            <section className={`rounded-2xl border shadow-sm p-5 ${cardBg}`}>
+              <div className="flex items-baseline gap-2">
+                <span className={`font-bold ${titleColor} ${sizeSection}`}>1-1.</span>
+                <span className={`font-semibold ${labelColor} ${sizeBody}`}>{lang === 'ko' ? '비자 종류는?' : 'Visa type?'}</span>
+              </div>
               <select
                 value={visaMode === 'other' ? 'OTHER' : selections.visa_type}
                 onChange={(e) => {
@@ -244,7 +208,7 @@ export default function QaPage() {
                     setSelections((p) => ({ ...p, visa_type: v }));
                   }
                 }}
-                className={`w-full h-[52px] p-4 rounded-[10px] border outline-none ${fontSizeClass} ${inputClass} font-medium`}
+                className={`mt-3 w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeBody}`}
               >
                 {COMMON_VISAS.map((v) => (
                   <option key={v.code || 'none'} value={v.code}>
@@ -261,75 +225,95 @@ export default function QaPage() {
                     setSelections((p) => ({ ...p, visa_type: normalizeVisa(e.target.value) }));
                   }}
                   placeholder={lang === 'ko' ? '예: G-1, A-2' : 'e.g. G-1, A-2'}
-                  className={`mt-3 w-full h-[52px] p-4 rounded-[10px] border outline-none ${fontSizeClass} ${inputClass} font-medium`}
+                  className={`mt-3 w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeBody}`}
                 />
               )}
             </section>
           )}
 
-          {/* 연령 및 서비스 선택 카드 */}
-          {[ {id:'age', q:t.q2, txt:t.q2_text, ph:t.agePlaceholder}, {id:'service', q:t.q3, txt:t.q3_text, ph:t.servicePlaceholder} ].map((item) => (
-            <section key={item.id} className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
-              <h2 className="text-[32px] font-bold mb-1 leading-none">{item.q}</h2>
-              <p className="text-[20px] font-bold mb-4">{item.txt}</p>
-              <input 
-                type="text" 
-                readOnly 
-                placeholder={item.ph} 
-                className={`w-full h-[52px] p-4 rounded-[10px] border mb-5 outline-none ${isHighContrast ? "text-[#ffffff]" : "text-black"} cursor-pointer font-medium ${fontSizeClass} ${inputClass}`} 
-                value={(selections as any)[item.id]} 
-                onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} 
-              />
-              <div className="flex gap-3">
-                <button onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>
-                  {t.btnSelect}
-                </button>
-                <button onClick={handleStartVoice} className={`flex-1 h-[55px] rounded-[10px] font-bold text-[20px] shadow-sm ${buttonClass}`}>
-                  {t.btnVoice}
-                </button>
+          {/* 연령 / 서비스 */}
+          {[
+            { id: 'age', q: t.q2, txt: t.q2_text, ph: t.agePlaceholder },
+            { id: 'service', q: t.q3, txt: t.q3_text, ph: t.servicePlaceholder },
+          ].map((item) => (
+            <section key={item.id} className={`rounded-2xl border shadow-sm p-5 ${cardBg}`}>
+              <div className="flex items-baseline gap-2">
+                <span className={`font-bold ${titleColor} ${sizeSection}`}>{item.q}</span>
+                <span className={`font-semibold ${labelColor} ${sizeBody}`}>{item.txt}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => { setModalType(item.id as any); setIsSelectModalOpen(true); }}
+                className={`mt-3 w-full px-4 py-3 rounded-xl border flex items-center justify-between font-medium transition-colors ${inputBg} ${sizeBody}`}
+              >
+                <span className={(selections as any)[item.id] ? titleColor : subtleColor}>
+                  {(selections as any)[item.id] || item.ph}
+                </span>
+                <ChevronDown className={`w-5 h-5 ${subtleColor}`} />
+              </button>
             </section>
           ))}
 
-          {/* 상황 입력 카드 */}
-          <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
-            <h2 className="text-[32px] font-bold mb-1 leading-none">{t.q4}</h2>
-            <p className="text-[20px] font-bold mb-4">{t.q4_text}</p>
-            <textarea 
-              placeholder={t.textareaPlaceholder} 
-              className={`w-full h-[120px] p-4 rounded-[10px] border mb-5 resize-none outline-none ${isHighContrast ? "text-white" : "text-black"} font-medium ${fontSizeClass} ${inputClass}`} 
-              value={selections.detail} 
-              onChange={(e) => setSelections({...selections, detail: e.target.value})} 
+          {/* 상황 입력 */}
+          <section className={`rounded-2xl border shadow-sm p-5 ${cardBg}`}>
+            <div className="flex items-baseline gap-2">
+              <span className={`font-bold ${titleColor} ${sizeSection}`}>{t.q4}</span>
+              <span className={`font-semibold ${labelColor} ${sizeBody}`}>{t.q4_text}</span>
+            </div>
+            <textarea
+              placeholder={t.textareaPlaceholder}
+              className={`mt-3 w-full h-28 p-4 rounded-xl border resize-none outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeBody}`}
+              value={selections.detail}
+              onChange={(e) => setSelections({ ...selections, detail: e.target.value })}
             />
-            <button onClick={handleStartVoice} className={`w-full h-[60px] rounded-[10px] text-[22px] font-bold shadow-md ${buttonClass}`}>
+            <button
+              onClick={handleStartVoice}
+              className={`mt-3 w-full py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${secondaryBtn} ${sizeBody}`}
+            >
+              <Mic className="w-4 h-4" />
               {t.btnVoice}
             </button>
           </section>
 
-          {/* 최종 제출 버튼 */}
-          <button 
-            onClick={handleSubmit} 
-            className={`mt-8 w-full max-w-[380px] h-[75px] rounded-[10px] text-[32px] font-bold shadow-xl active:scale-[0.98] transition-all ${buttonClass2}`}
+          <button
+            onClick={handleSubmit}
+            className={`mt-2 w-full py-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md ${ctaBtn} ${isLargeFont ? 'text-xl' : 'text-lg'}`}
           >
+            <Sparkles className="w-5 h-5" />
             {t.btnSubmit}
           </button>
         </main>
       </div>
 
-      {/* 모달 UI들은 기존과 동일 */}
+      {/* 옵션 선택 모달 */}
       {isSelectModalOpen && modalType && (
-        <div className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center z-[200]">
-          <div className="w-[85%] max-w-[350px]">
-            <div className="bg-white border-2 border-gray-400 overflow-hidden shadow-2xl rounded-[20px]">
-              <div className="p-5 text-center font-bold text-[24px] border-b-2 border-gray-300 text-black">{modalType === 'age' ? t.modalAge : t.modalService}</div>
-              <ul className="max-h-[270px] overflow-y-auto">
-                {t.options[modalType].map((item: string) => (
-                  <li key={item} onClick={() => handleSelect(modalType, item)} className="p-4 text-center border-b border-gray-200 text-[22px] text-black active:bg-gray-100 cursor-pointer font-medium">{item}</li>
-                ))}
-              </ul>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[200] p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900">{modalType === 'age' ? t.modalAge : t.modalService}</h3>
+              <button onClick={() => setIsSelectModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="mt-2 flex justify-center">
-              <button onClick={() => setIsSelectModalOpen(false)} className="w-[200px] h-[60px] bg-white border-2 border-gray-400 text-[24px] font-bold text-black rounded-[7px] shadow-sm">{t.cancel}</button>
+            <ul className="max-h-[60vh] overflow-y-auto">
+              {t.options[modalType].map((item: string) => (
+                <li key={item}>
+                  <button
+                    onClick={() => handleSelect(modalType, item)}
+                    className="w-full px-5 py-3.5 text-left text-base text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-100"
+                  >
+                    {item}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="p-3">
+              <button
+                onClick={() => setIsSelectModalOpen(false)}
+                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors"
+              >
+                {t.cancel}
+              </button>
             </div>
           </div>
         </div>
@@ -338,15 +322,22 @@ export default function QaPage() {
       <ChatFab isHighContrast={isHighContrast} label={lang === 'ko' ? '챗봇' : 'Chat'} />
 
       {isVoiceModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-[300]">
-          <div className="flex flex-col items-center gap-10">
-            <div className="w-[280px] h-[280px] bg-white rounded-full flex flex-col items-center justify-center shadow-2xl animate-pulse">
-              <p className="text-[34px] font-bold mb-6 text-black tracking-tighter">{t.voiceMain}</p>
-              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center z-[300] p-6">
+          <div className="flex flex-col items-center gap-8">
+            <div className="w-56 h-56 bg-white rounded-full flex flex-col items-center justify-center shadow-2xl">
+              <Mic className="w-16 h-16 text-blue-600 animate-pulse" />
+              <p className="mt-3 text-xl font-bold text-slate-900">{t.voiceMain}</p>
             </div>
-            <div className="flex flex-col gap-4">
-              <button onClick={stopRecording} className="px-12 py-4 bg-[#009DFF] text-white rounded-full font-bold text-[24px] shadow-lg">{t.voiceSubmit}</button>
-              <button onClick={() => setIsVoiceModalOpen(false)} className="text-[28px] font-bold text-red-600 opacity-80 uppercase">{t.cancel}</button>
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={stopRecording}
+                className="px-10 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-lg transition-colors"
+              >
+                {t.voiceSubmit}
+              </button>
+              <button onClick={() => setIsVoiceModalOpen(false)} className="text-sm font-semibold text-red-400 hover:text-red-300 transition-colors">
+                {t.cancel}
+              </button>
             </div>
           </div>
         </div>

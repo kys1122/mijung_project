@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, ChevronLeft, ExternalLink, Volume2 } from "lucide-react";
+import { Check, ChevronLeft, ExternalLink, FileText, Volume2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
@@ -9,7 +9,7 @@ import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/str
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
-const ProcedureScreen : React.FC = () => {
+const ProcedureScreen: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -18,7 +18,6 @@ const ProcedureScreen : React.FC = () => {
   const [serviceName, setServiceName] = useState({ ko: "", en: "" });
   const [loading, setLoading] = useState(true);
 
-  //모드
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
@@ -36,19 +35,16 @@ const ProcedureScreen : React.FC = () => {
   const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
   const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
-    // --- 실제 백엔드 데이터 연결 ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const res = await apiFetch(`/api/checklist/${id}`);
         const data = await res.json();
-
-        // 백엔드 구조에 맞춰 데이터 세팅
         setStep(data.steps || []);
         setServiceName({
           ko: data.name,
-          en: data.nameEn || data.name // 영어 이름이 없으면 한글 이름으로 대체
+          en: data.nameEn || data.name
         });
       } catch (err) {
         console.error("데이터 로드 실패:", err);
@@ -59,7 +55,6 @@ const ProcedureScreen : React.FC = () => {
     if (id) fetchData();
   }, [id]);
 
-  // 진행 단계(checklist) 기록 — 로그인된 사용자만
   useEffect(() => {
     if (!id || !getAccessToken()) return;
     apiFetch(`/api/my-services/${id}/visit`, {
@@ -68,18 +63,16 @@ const ProcedureScreen : React.FC = () => {
     }).catch(err => console.error('visit 기록 실패:', err));
   }, [id]);
 
-  // 진행률 계산 (백엔드에서 가져온 step 배열 기준)
-  const completedCount = step.filter((s:any) => s.isCompleted).length;
+  const completedCount = step.filter((s: any) => s.isCompleted).length;
   const progress = step.length > 0 ? (completedCount / step.length) * 100 : 0;
 
-  // 완료 상태 토글: UI 즉시 반영 후 백엔드에 저장
   const Complete = async (stepId: number) => {
     const target = step.find((s: any) => s.id === stepId);
     if (!target) return;
     const newChecked = !target.isCompleted;
-    setStep(prev => prev.map((s: any) => s.id === stepId ? {...s, isCompleted: newChecked} : s));
+    setStep(prev => prev.map((s: any) => s.id === stepId ? { ...s, isCompleted: newChecked } : s));
 
-    if (!getAccessToken()) return; // 비로그인은 UI만 토글
+    if (!getAccessToken()) return;
     try {
       const res = await apiFetch(`/api/checklist/${id}/progress`, {
         method: 'PUT',
@@ -91,7 +84,6 @@ const ProcedureScreen : React.FC = () => {
     }
   };
 
-  // 음성으로 듣기 (/api/tts)
   const [ttsLoadingId, setTtsLoadingId] = useState<number | null>(null);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const handleSpeak = async (s: any) => {
@@ -125,90 +117,138 @@ const ProcedureScreen : React.FC = () => {
 
   const t = useTranslations<ProcedureStrings>('procedure', PROC_STRINGS as unknown as { ko: ProcedureStrings; en: ProcedureStrings }, lang);
 
-  const themeClass = isHighContrast ? "bg-black text-yellow-400" : "bg-white text-black";
-  const themeClass2 = isHighContrast ? "bg-black text-white" : "bg-white text-black";
-  const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
-  const textClass = isHighContrast ? 'text-white' : 'text-black'
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
+  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
+  const cardDone = isHighContrast ? 'bg-zinc-900 border-yellow-300' : 'bg-emerald-50 border-emerald-200';
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const progressBg = isHighContrast ? 'bg-zinc-700' : 'bg-slate-200';
+  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-blue-600';
+  const ttsBtn = isHighContrast
+    ? 'bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700'
+    : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200';
+  const linkBtn = isHighContrast
+    ? 'bg-yellow-400 text-black hover:bg-yellow-300'
+    : 'bg-blue-600 text-white hover:bg-blue-700';
+  const docsBtn = isHighContrast
+    ? 'bg-zinc-900 border-yellow-400 text-yellow-400 hover:bg-zinc-800'
+    : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50';
+  const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
+  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
 
-  if (loading) return <div className={`min-h-screen flex items-center justify-center ${themeClass2}`}>{t.loading}</div>;
+  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
+  const sizeBody = isLargeFont ? 'text-base sm:text-lg' : 'text-sm sm:text-base';
+  const sizeStepTitle = isLargeFont ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl';
+  const sizeBtn = isLargeFont ? 'text-lg' : 'text-base';
 
-  return(
-    <div className={`min-h-screen flex flex-col items-center ${themeClass2}`}>
-      <div className="w-full max-w-[450px]">
-        <header className={`relative py-4 item-center justify-between ${headerBorder}`}>
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${pageBg}`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className={`w-8 h-8 border-3 ${progressBg} border-t-blue-500 rounded-full animate-spin`}></div>
+          <p className={subtleColor}>{t.loading}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${pageBg}`}>
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-16">
+        <header className="flex items-center justify-between gap-2">
           <button
-          onClick={() => router.back()}
-          className="flex items-center activate:opacity-40 transition-opacity gap-1"
+            onClick={() => router.back()}
+            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
           >
-            <ChevronLeft className="w-8 h-8"/>
-            <span className={`${isLargeFont ? 'text-[26px]' : 'text-[22px]'} ${themeClass2}`}>{t.back}</span>
+            <ChevronLeft className="w-6 h-6" />
+            <span className={sizeBody}>{t.back}</span>
           </button>
-          <TopSettings 
-            lang={lang} setLang={handleLang} 
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast} 
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
+          <TopSettings
+            lang={lang} setLang={handleLang}
+            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
           />
         </header>
 
-        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}</h1>
-        
-        <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 ${isHighContrast ? 'bg-zinc-800 border-2 border-[#ffd000]' : 'bg-[#E9F1FF]'} rounded-[15px]`}>
-          <span className={`text-center ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} font-bold block`}>{t.progress}</span>
-          <span className={`w-full text-right ${isLargeFont ? 'text-[22px]' : 'text-[18px]'} block -mt-3`}>{completedCount}/{step.length}</span>
-          <div className="w-full h-4 bg-white rounded-[20px]">
-            <div className={`${isHighContrast ? 'bg-[#ffd207]' : 'bg-[#005EFF]'} h-full transition-all rounded-[20px]`}
-                style={{width: `${progress}%`}}/>
+        <h1 className={`mt-4 font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
+          {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
+        </h1>
+
+        <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
+          <div className="flex items-center justify-between">
+            <span className={`font-semibold ${titleColor} ${sizeBody}`}>{t.progress}</span>
+            <span className={`font-medium ${subtleColor} ${sizeBody}`}>
+              {completedCount}/{step.length}
+            </span>
+          </div>
+          <div className={`mt-3 w-full h-2.5 rounded-full overflow-hidden ${progressBg}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${progressFill}`}
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <button 
+        <div className="mt-4 flex justify-end">
+          <button
             onClick={() => router.push(`/list/document/${id}`)}
-            className={`mt-[15px] p-[5px] px-[15px] flex items-center border-3 rounded-[15px] text-black ${isHighContrast ? 'border-[#ffd000] bg-[#ffd000]' : 'border-[#0044FF] bg-white'} ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} font-semibold`}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 font-semibold transition-colors ${docsBtn} ${sizeBody}`}
           >
+            <FileText className="w-4 h-4" />
             {t.docs}
           </button>
         </div>
 
-        <div className="flex flex-col gap-10 p-5 mt-15">
-          {step.map((step:any) => (
-            <div key={step.id} className="relative">
-              <div className={`absolute -top-4 -left-2 w-13 h-13 flex items-center justify-center rounded-full ${isHighContrast ? "text-black" : "text-white"} font-bold ${isLargeFont ? 'text-[40px]' : 'text-[36px]'} ${isHighContrast ? (step.isCompleted ? 'bg-[#ffc200]' : 'bg-white') : (step.isCompleted ? 'bg-[#00CA22]' : 'bg-[#009DFF]')}`}>
-                {step.id}
+        <div className="mt-6 flex flex-col gap-4">
+          {step.map((s: any) => (
+            <div
+              key={s.id}
+              className={`relative rounded-2xl border shadow-sm transition-all ${s.isCompleted ? cardDone : cardBg}`}
+            >
+              <div className={`absolute -top-3 -left-2 w-10 h-10 flex items-center justify-center rounded-full font-bold shadow-sm ${
+                s.isCompleted
+                  ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-emerald-500 text-white')
+                  : (isHighContrast ? 'bg-zinc-800 text-yellow-400 border border-yellow-400' : 'bg-blue-600 text-white')
+              }`}>
+                {s.id}
               </div>
-              <div className={`p-5 pt-8 border-2 rounded-[10px] ${isHighContrast ? (step.isCompleted ? 'border-[#ffdf7e] bg-black' : 'border-white bg-black') : (step.isCompleted ? 'border-[#009C27] bg-[#F4FFF6]' : 'border-[#C9C9C9] bg-white')}`}>
-                <h2 className={`mb-4 ${isLargeFont ? 'text-[32px]' : 'text-[28px]'} font-bold ${textClass}`}>{step.title}</h2>
-                <p className={`px-3 mb-11 ${isLargeFont ? 'text-[26px]' : 'text-[22px]'} ${textClass}`}>{step.description}</p>
-                <div className="flex flex-col">
-                  {step.link && (
+              <div className="p-5 pt-6">
+                <h2 className={`mb-2 font-bold ${titleColor} ${sizeStepTitle}`}>{s.title}</h2>
+                <p className={`leading-relaxed ${descColor} ${sizeBody}`}>{s.description}</p>
+
+                <div className="mt-5 flex flex-col gap-2">
+                  {s.link && (
                     <button
                       onClick={() => {
-                        const url = step.link.startsWith('http') ? step.link : `https://${step.link}`;
+                        const url = s.link.startsWith('http') ? s.link : `https://${s.link}`;
                         window.open(url, '_blank', 'noopener,noreferrer');
                       }}
-                      className={`mb-2 mx-4.5 py-1.5 flex items-center justify-center bg-[#3F85FF] rounded-[10px] text-white font-bold ${isLargeFont ? 'text-[26px]' : 'text-[22px]'}`}>
-                      <ExternalLink className="w-5 h-5"/>
+                      className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${linkBtn} ${sizeBtn}`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
                       {t.web}
                     </button>
                   )}
                   <button
-                    onClick={() => handleSpeak(step)}
-                    disabled={ttsLoadingId === step.id}
-                    className={`mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] font-bold text-black ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} disabled:opacity-60`}>
-                    <Volume2 className="w-7 h-7"/>
-                    {ttsLoadingId === step.id ? t.voicePlaying : t.voice}
-                  </button>
-
-                  <button
-                    onClick={() => Complete(step.id)}
-                    className="mt-7 flex items-center"
+                    onClick={() => handleSpeak(s)}
+                    disabled={ttsLoadingId === s.id}
+                    className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${ttsBtn} ${sizeBtn}`}
                   >
-                    <div className={`w-9 h-9 flex items-center justify-center ${isHighContrast ? (step.isCompleted ? 'bg-[#ffd000]' : 'bg-[#F1F1F1]') : (step.isCompleted ? 'bg-[#00E404]' : 'bg-[#F1F1F1]')}`}>
-                      {step.isCompleted && <Check className="text-white w-7 h-7"/>}
-                    </div>
-                    <span className={`ml-2 text-[24px] font-bold ${textClass}`}>{t.done}</span>
+                    <Volume2 className="w-4 h-4" />
+                    {ttsLoadingId === s.id ? t.voicePlaying : t.voice}
                   </button>
                 </div>
+
+                <button
+                  onClick={() => Complete(s.id)}
+                  className="mt-5 flex items-center gap-2"
+                >
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-md border-2 transition-colors ${s.isCompleted ? checkboxOn : checkboxOff}`}>
+                    {s.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+                  </span>
+                  <span className={`font-semibold ${titleColor} ${sizeBody}`}>{t.done}</span>
+                </button>
               </div>
             </div>
           ))}

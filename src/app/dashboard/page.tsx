@@ -67,7 +67,7 @@ const DashboardScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-[480px] px-5 pb-16">
+      <div className="mx-auto max-w-md sm:max-w-2xl md:max-w-3xl px-5 sm:px-8 pb-16">
         <header className="pt-6 flex items-center gap-2">
           <button
             onClick={() => router.back()}
@@ -115,7 +115,7 @@ const DashboardScreen: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {services.map((svc) => {
               const meta = STEP_META[svc.last_step];
               const Icon = meta.Icon;

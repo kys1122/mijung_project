@@ -46,8 +46,8 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 pt-16 pb-12">
-      <div className="w-full max-w-[420px]">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-20 pb-12">
+      <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">로그인</h1>
         <p className="mt-1.5 text-sm text-slate-500">민원 진행 상황을 이어서 확인하세요</p>
 

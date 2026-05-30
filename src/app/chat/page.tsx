@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Send, Mic } from 'lucide-react';
+import { ChevronLeft, Send, Mic, Sparkles } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
@@ -25,7 +25,6 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // ----- 설정 영속화 -----
   useEffect(() => {
     const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
@@ -44,7 +43,6 @@ export default function ChatPage() {
 
   const t = useTranslations<ChatStrings>('chat', CHAT_STRINGS as unknown as { ko: ChatStrings; en: ChatStrings }, lang);
 
-  // qa에서 저장한 컨텍스트로 user_type 추정 (서버는 한국어 키 기대)
   const userTypeFromContext = (): string => {
     try {
       const ctx = JSON.parse(localStorage.getItem('final_context') ?? 'null');
@@ -111,8 +109,6 @@ export default function ChatPage() {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-
-        // SSE: "data: {...}\n\n" 단위로 파싱
         let idx;
         while ((idx = buf.indexOf('\n\n')) !== -1) {
           const raw = buf.slice(0, idx).trim();
@@ -132,7 +128,6 @@ export default function ChatPage() {
               });
             }
           } catch {
-            // 비 JSON chunk
             acc += payload;
             setMessages(prev => {
               const copy = [...prev];
@@ -152,7 +147,6 @@ export default function ChatPage() {
     }
   };
 
-  // 스트리밍 실패/빈응답이면 /api/chat 단발 호출
   const fallbackToChat = async (question: string, current: Msg[]) => {
     try {
       const res = await fetch('/api/chat', {
@@ -186,7 +180,6 @@ export default function ChatPage() {
     }
   };
 
-  // ----- 음성 입력 (STT) -----
   const startRec = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -215,20 +208,35 @@ export default function ChatPage() {
     setIsRecording(false);
   };
 
-  const themeClass = isHighContrast ? 'bg-black text-white' : 'bg-white text-black';
-  const headerBorder = isHighContrast ? 'border-b border-white' : 'border-b-2 border-[#C9C9C9]';
-  const inputBg = isHighContrast ? 'bg-black border-white text-white' : 'bg-white border-gray-300 text-black';
-  const userBubble = isHighContrast ? 'bg-[#FDC700] text-black' : 'bg-[#009DFF] text-white';
-  const botBubble = isHighContrast ? 'bg-zinc-800 text-white border border-[#ffd000]' : 'bg-[#F0F7FF] text-black border border-gray-200';
-  const fontSize = isLargeFont ? 'text-[22px]' : 'text-[18px]';
+  // --- 디자인 토큰 ---
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
+  const headerBorder = isHighContrast ? 'border-zinc-700' : 'border-slate-200/70';
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const inputBg = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
+  const userBubble = isHighContrast ? 'bg-yellow-400 text-black' : 'bg-blue-600 text-white';
+  const botBubble = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-800';
+  const sendBtn = isHighContrast
+    ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
+    : 'bg-blue-600 hover:bg-blue-700 text-white';
+  const micBtn = isRecording
+    ? 'bg-red-500 hover:bg-red-600 text-white'
+    : (isHighContrast ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white border border-slate-200 hover:bg-slate-100 text-blue-600');
+
+  const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
+  const sizeTitle = isLargeFont ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl';
+  const sizeBack = isLargeFont ? 'text-lg' : 'text-base';
 
   return (
-    <div className={`min-h-screen flex flex-col items-center ${themeClass}`}>
-      <div className="w-full max-w-[450px] flex flex-col" style={{ minHeight: '100vh' }}>
-        <header className={`relative py-4 px-4 ${headerBorder}`}>
-          <button onClick={() => router.back()} className="flex items-center gap-1">
-            <ChevronLeft className="w-8 h-8" />
-            <span className={`${isLargeFont ? 'text-[24px]' : 'text-[20px]'} font-semibold`}>{t.back}</span>
+    <div className={`fixed inset-0 flex flex-col ${pageBg}`}>
+      <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
+        <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
+          <button
+            onClick={() => router.back()}
+            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className={`font-medium ${sizeBack}`}>{t.back}</span>
           </button>
           <TopSettings
             lang={lang} setLang={handleLang}
@@ -237,43 +245,64 @@ export default function ChatPage() {
           />
         </header>
 
-        <h1 className={`px-4 pt-3 ${isLargeFont ? 'text-[34px]' : 'text-[28px]'} font-bold`}>{t.title}</h1>
+        <div className={`px-5 sm:px-8 pt-4 pb-2 ${titleColor}`}>
+          <h1 className={`font-bold tracking-tight ${sizeTitle}`}>{t.title}</h1>
+        </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3" style={{ minHeight: 0 }}>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 flex flex-col gap-3 min-h-0">
           {messages.length === 0 && (
-            <p className={`opacity-60 ${fontSize}`}>{t.placeholder}</p>
+            <div className={`mt-12 flex flex-col items-center text-center ${subtleColor}`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-blue-50'}`}>
+                <Sparkles className={`w-7 h-7 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              </div>
+              <p className={`mt-4 ${sizeBubble}`}>{t.placeholder}</p>
+            </div>
           )}
           {messages.map((m, i) => (
-            <div key={i} className={`max-w-[85%] px-4 py-3 rounded-2xl ${fontSize} whitespace-pre-wrap leading-snug ${m.role === 'user' ? `${userBubble} self-end` : `${botBubble} self-start`}`}>
-              {m.content || (m.role === 'assistant' && sending ? '…' : '')}
+            <div
+              key={i}
+              className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap leading-relaxed shadow-sm ${sizeBubble} ${
+                m.role === 'user' ? `${userBubble} self-end rounded-tr-md` : `${botBubble} self-start rounded-tl-md border`
+              }`}
+            >
+              {m.content || (m.role === 'assistant' && sending ? (
+                <span className="inline-flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></span>
+                  <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></span>
+                </span>
+              ) : '')}
             </div>
           ))}
         </div>
 
-        <div className={`p-3 border-t ${isHighContrast ? 'border-white' : 'border-gray-200'} flex gap-2 items-end`}>
-          <button
-            onClick={isRecording ? stopRec : startRec}
-            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${isRecording ? 'bg-red-500 text-white' : (isHighContrast ? 'bg-[#FDC700] text-black' : 'bg-[#009DFF] text-white')}`}
-            aria-label="voice"
-          >
-            <Mic className="w-6 h-6" />
-          </button>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={t.placeholder}
-            rows={1}
-            className={`flex-1 resize-none px-3 py-3 rounded-2xl border outline-none ${inputBg} ${fontSize}`}
-            disabled={sending}
-          />
-          <button
-            onClick={send}
-            disabled={sending || !input.trim()}
-            className={`shrink-0 h-12 px-4 rounded-2xl font-bold ${isHighContrast ? 'bg-[#FDC700] text-black' : 'bg-[#009DFF] text-white'} disabled:opacity-50`}
-          >
-            <Send className="w-5 h-5" />
-          </button>
+        <div className={`px-5 sm:px-8 py-3 border-t ${headerBorder}`}>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={isRecording ? stopRec : startRec}
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm ${micBtn}`}
+              aria-label="voice"
+            >
+              <Mic className="w-5 h-5" />
+            </button>
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+              placeholder={t.placeholder}
+              rows={1}
+              className={`flex-1 resize-none px-4 py-2.5 rounded-2xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all ${inputBg} ${sizeBubble}`}
+              disabled={sending}
+            />
+            <button
+              onClick={send}
+              disabled={sending || !input.trim()}
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`}
+              aria-label="send"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

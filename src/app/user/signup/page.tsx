@@ -30,7 +30,7 @@ const SignupScreen: React.FC = () => {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
-          name: data.email.split('@')[0]
+          name: data.name.trim()
         })
       });
       const result = await response.json();
@@ -48,13 +48,26 @@ const SignupScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 pt-16 pb-12">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[420px]">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-16 pb-12">
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">회원가입</h1>
         <p className="mt-1.5 text-sm text-slate-500">계정을 만들고 민원 진행을 저장하세요</p>
 
         <div className="mt-8 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-6">
           <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">이름</label>
+              <input
+                {...register("name", { required: true, minLength: 1, maxLength: 50, pattern: /^\s*\S.*$/ })}
+                className={`w-full px-4 py-3 bg-white border rounded-xl text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all ${errors?.name ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                type="text"
+                placeholder="홍길동"
+                autoComplete="name"
+              />
+              {errors?.name?.type === 'required' && <p className="mt-1.5 text-xs text-red-600">이름을 입력해주세요.</p>}
+              {errors?.name?.type === 'pattern' && <p className="mt-1.5 text-xs text-red-600">이름을 올바르게 입력해주세요.</p>}
+              {errors?.name?.type === 'maxLength' && <p className="mt-1.5 text-xs text-red-600">이름은 50자 이하로 입력해주세요.</p>}
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">이메일</label>
               <input
