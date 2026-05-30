@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Send, Mic } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
+import { useTranslations } from '../lib/i18n';
+import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
+import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
@@ -24,20 +27,22 @@ export default function ChatPage() {
 
   // ----- 설정 영속화 -----
   useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
+    const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
     const savedFont = localStorage.getItem('app_font') === 'true';
-    if (savedLang) setLang(savedLang);
+    if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
-  const handleLang = (v: 'ko' | 'en') => { setLang(v); localStorage.setItem('app_lang', v); };
+  const handleLang = (v: LangCode) => { setLang(v); localStorage.setItem('app_lang', v); };
   const handleContrast = (v: boolean) => { setIsHighContrast(v); localStorage.setItem('app_contrast', String(v)); };
   const handleFont = (v: boolean) => { setIsLargeFont(v); localStorage.setItem('app_font', String(v)); };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
+
+  const t = useTranslations<ChatStrings>('chat', CHAT_STRINGS as unknown as { ko: ChatStrings; en: ChatStrings }, lang);
 
   // qa에서 저장한 컨텍스트로 user_type 추정 (서버는 한국어 키 기대)
   const userTypeFromContext = (): string => {
@@ -157,7 +162,7 @@ export default function ChatPage() {
         const copy = [...prev];
         copy[copy.length - 1] = {
           role: 'assistant',
-          content: data.answer ?? data.error ?? '응답을 받지 못했습니다.'
+          content: data.answer ?? data.error ?? t.failResponse
         };
         return copy;
       });
@@ -165,7 +170,7 @@ export default function ChatPage() {
       console.error('chat fallback error:', e);
       setMessages(prev => {
         const copy = [...prev];
-        copy[copy.length - 1] = { role: 'assistant', content: 'AI 서버와 통신에 실패했습니다.' };
+        copy[copy.length - 1] = { role: 'assistant', content: t.failServer };
         return copy;
       });
     }
@@ -192,18 +197,13 @@ export default function ChatPage() {
       };
       rec.start();
       setIsRecording(true);
-    } catch { alert('마이크 권한이 필요합니다.'); }
+    } catch { alert(t.micPermission); }
   };
   const stopRec = () => {
     const r = mediaRecorderRef.current;
     if (r && r.state !== 'inactive') r.stop();
     setIsRecording(false);
   };
-
-  const t = {
-    ko: { title: '챗봇 상담', back: '뒤로', placeholder: '무엇이든 물어보세요', send: '전송', langText: '한/영변환', highContrast: '고대비모드', largeFont: '큰글씨모드' },
-    en: { title: 'Chat', back: 'Back', placeholder: 'Ask me anything', send: 'Send', langText: 'KO/EN', highContrast: 'Contrast', largeFont: 'Big Font' }
-  }[lang] as any;
 
   const themeClass = isHighContrast ? 'bg-black text-white' : 'bg-white text-black';
   const headerBorder = isHighContrast ? 'border-b border-white' : 'border-b-2 border-[#C9C9C9]';

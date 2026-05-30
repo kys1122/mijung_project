@@ -51,7 +51,7 @@ export default function QaPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const t = useTranslations<QaStrings>('qa', QA_STRINGS as { ko: QaStrings; en: QaStrings }, lang);
+  const t = useTranslations<QaStrings>('qa', QA_STRINGS as unknown as { ko: QaStrings; en: QaStrings }, lang);
 
   // --- 비즈니스 로직 (세션 복원, 음성 인식 등) ---
   useEffect(() => {
