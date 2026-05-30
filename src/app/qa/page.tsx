@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Mic, ChevronDown, Sparkles, X } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import ChatFab from '../components/ChatFab';
@@ -10,8 +10,13 @@ import { STRINGS as QA_STRINGS, type QaStrings } from '../lib/strings/qa';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 import { COMMON_VISAS, normalizeVisa } from '../lib/visa';
 
+const ALLOWED_NEXT = new Set(['/chat', '/recommend', '/list', '/dashboard']);
+
 export default function QaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get('next');
+  const nextPath = nextParam && ALLOWED_NEXT.has(nextParam) ? nextParam : '/recommend';
 
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
@@ -123,7 +128,7 @@ export default function QaPage() {
         localStorage.setItem('analyze_result', JSON.stringify(data));
       }
     } catch (e) { console.error('analyze 호출 실패:', e); }
-    router.push('/recommend');
+    router.push(nextPath);
   };
 
   // --- 디자인 토큰 ---
