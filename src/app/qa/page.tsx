@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopSettings from '../components/TopSettings';
 import ChatFab from '../components/ChatFab';
+import { useTranslations } from '../lib/i18n';
+import { STRINGS as QA_STRINGS, type QaStrings } from '../lib/strings/qa';
+import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 
 export default function QaPage() {
   const router = useRouter();
@@ -11,7 +14,7 @@ export default function QaPage() {
   // --- 상태 관리 ---
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [selections, setSelections] = useState({ type: '', age: '', service: '', detail: '' });
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'age' | 'service' | null>(null);
@@ -19,17 +22,17 @@ export default function QaPage() {
 
   // --- [추가] 페이지 로드 시 localStorage에서 설정 불러오기 ---
   useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
+    const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
     const savedFont = localStorage.getItem('app_font') === 'true';
 
-    if (savedLang) setLang(savedLang);
+    if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
   // --- [추가] 설정 변경 시 localStorage에 저장하는 핸들러 ---
-  const handleLang = (newLang: 'ko' | 'en') => {
+  const handleLang = (newLang: LangCode) => {
     setLang(newLang);
     localStorage.setItem('app_lang', newLang);
   };
@@ -48,28 +51,7 @@ export default function QaPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const t = {
-    ko: {
-      title: "민원 찾기", step: "진행사항", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드",
-      q1: "1.", q1_text: "유형이 어떻게 되시나요?", q2: "2.", q2_text: "연령대가 어떻게 되나요?",
-      q3: "3.", q3_text: "필요한 서비스는 무엇인가요?", q4: "4.", q4_text: "무슨 상황인가요?",
-      types: ['외국인', '노인 (65세 이상)', '저소득층', '해당없음'],
-      options: { age: ['10대', '20대', '30대', '40대', '50대', '60대 이상'], service: ['민원', '복지', '주거', '의료', '일자리'] },
-      agePlaceholder: "연령을 선택해주세요", servicePlaceholder: "서비스를 선택해주세요", textareaPlaceholder: "상황을 입력하거나 음성으로 말씀해주세요",
-      btnSelect: "입력 선택", btnVoice: "음성 인식", btnSubmit: "입력 완료",
-      cancel: "취소", modalAge: "연령 입력", modalService: "서비스 입력", voiceMain: "말해주세요", voiceSubmit: "말하기 완료 (전송)"
-    },
-    en: {
-      title: "Public Service", step: "Progress", langText: "KO/EN", highContrast: "Contrast", largeFont: "BigFont",
-      q1: "1.", q1_text: "What is your type?", q2: "2.", q2_text: "How old are you?",
-      q3: "3.", q3_text: "What service do you need?", q4: "4.", q4_text: "What is the situation?",
-      types: ['Foreigner', 'Senior', 'Low Income', 'N/A'],
-      options: { age: ['10s', '20s', '30s', '40s', '50s', '60s or older'], service: ['Civil Service', 'Welfare', 'Housing', 'Medical', 'Jobs'] },
-      agePlaceholder: "Select Age", servicePlaceholder: "Select Service", textareaPlaceholder: "Enter situation or speak",
-      btnSelect: "Select", btnVoice: "Voice", btnSubmit: "Complete",
-      cancel: "Cancel", modalAge: "Age Input", modalService: "Service Input", voiceMain: "Please speak", voiceSubmit: "Finish (Send)"
-    }
-  }[lang] as any;
+  const t = useTranslations<QaStrings>('qa', QA_STRINGS as { ko: QaStrings; en: QaStrings }, lang);
 
   // --- 비즈니스 로직 (세션 복원, 음성 인식 등) ---
   useEffect(() => {
