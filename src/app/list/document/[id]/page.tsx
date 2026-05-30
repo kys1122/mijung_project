@@ -3,9 +3,12 @@
 import { Building2, Check, ChevronLeft } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import DetailModal from "./detailModal"; 
+import DetailModal from "./detailModal";
 import TopSettings from "@/app/components/TopSettings";
 import axios from "axios";
+import { useTranslations } from '../../../lib/i18n';
+import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
+import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();
@@ -50,28 +53,25 @@ const DocumentScreen: React.FC = () => {
     setModalOpen(true);
   };
 
-  const [lang, setLang] = useState<"ko" | "en">("ko");
+  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
   // --- 2. 로컬 스토리지 UI 설정 로딩 ---
   useEffect(() => {
-    const savedLang = localStorage.getItem("app_lang") as "ko" | "en";
+    const savedLang = localStorage.getItem("app_lang") ?? '';
     const savedContrast = localStorage.getItem("app_contrast") === "true";
     const savedFont = localStorage.getItem("app_font") === "true";
-    if (savedLang) setLang(savedLang);
+    if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
-  const handleLang = (newLang: "ko" | "en") => { setLang(newLang); localStorage.setItem("app_lang", newLang); };
+  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem("app_lang", newLang); };
   const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem("app_contrast", String(val)); };
   const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem("app_font", String(val)); };
 
-  const t = {
-    ko: { back: "민원 절차 화면으로", docs: pageTitle || "필요한 서류 보기", need: "필요 서류", read: "자세히보기", done: "완료" },
-    en: { back: "Back", docs: "Required Docs", need: "required documents", read: "Read more", done: "Done" },
-  }[lang] as any;
+  const t = useTranslations<DocumentStrings>('document', DOC_STRINGS as unknown as { ko: DocumentStrings; en: DocumentStrings }, lang);
 
   const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
   const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
@@ -94,7 +94,7 @@ const DocumentScreen: React.FC = () => {
             isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t} 
           />
         </header>
-        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{t.docs}</h1>
+        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{pageTitle || t.docsFallback}</h1>
         <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 rounded-[15px] ${isHighContrast ? "bg-zinc-800 border-2 border-[#ffd000]" : "bg-[#E9F1FF]"}`}>
           <h2 className={`mb-3 ${isLargeFont ? 'text-[30px]' : 'text-[26px]'} font-bold ${textClass}`}>{t.need} ({completedCount}/{doc.length})</h2>
           <div className="flex flex-col">
