@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopSettings from '../components/TopSettings';
 import ChatFab from '../components/ChatFab';
+import { useTranslations } from '../lib/i18n';
+import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
+import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 
 interface ListInterface {
   id: number;
@@ -73,30 +76,27 @@ const ListScreen : React.FC = () => {
 
   const router = useRouter();
 
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
   // 설정 불러오기
   useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
+    const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
     const savedFont = localStorage.getItem('app_font') === 'true';
 
-    if (savedLang) setLang(savedLang);
+    if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
   // 설정 저장 함수들
-  const handleLang = (val: 'ko' | 'en') => { setLang(val); localStorage.setItem('app_lang', val); };
+  const handleLang = (val: LangCode) => { setLang(val); localStorage.setItem('app_lang', val); };
   const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
   const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
-  const t = {
-    ko: { title: "민원 선택", sub: "사용하실 민원을 선택해주세요.", btn: "민원 절차 보기", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드" },
-    en: { title: "Service Selection", sub: "Please select a service.", btn: "View Procedure", langText: "KO/EN", highContrast: "Contrast", largeFont: "BigFont" }
-  }[lang];
+  const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const themeClass = isHighContrast ? "bg-black text-white" : "bg-white text-black";
   const cardClass = isHighContrast ? "border-2 border-white bg-black" : "border-2 border-[#C4C4C4] bg-[#F7F7F7]";
@@ -130,10 +130,10 @@ const ListScreen : React.FC = () => {
               key={item.id}
               className={`p-4 mx-10 border-2 border-[#C4C4C4] rounded-[11px] bg-[#F7F7F7] flex flex-col items-center ${cardClass}`}>
               <h2 className={`${isLargeFont ? "text-[34px]" : "text-[30px]"} font-bold text-center`}>
-                {item.title[lang]}
+                {item.title[lang as 'ko' | 'en'] ?? item.title.en}
               </h2>
               <p className={`mt-2 px-5 ${isLargeFont ? "text-[26px]" : "text-[22px]"} text-center`}>
-                {item.description[lang]}
+                {item.description[lang as 'ko' | 'en'] ?? item.description.en}
               </p>
               <button
                 onClick={() => router.push(`/list/procedure/${item.url}`)}
@@ -144,7 +144,7 @@ const ListScreen : React.FC = () => {
           ))}
         </div>
       </div>
-      <ChatFab isHighContrast={isHighContrast} label={lang === 'ko' ? '챗봇' : 'Chat'} />
+      <ChatFab isHighContrast={isHighContrast} label={t.chatLabel} />
     </div>
   );
 }
