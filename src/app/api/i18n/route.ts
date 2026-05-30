@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import axios from 'axios';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { flatten, unflatten } from '@/app/lib/i18n';
+import { flatten, unflatten } from '@/app/lib/i18n-utils';
 import { STRINGS as QA_STRINGS } from '@/app/lib/strings/qa';
 import { STRINGS as LIST_STRINGS } from '@/app/lib/strings/list';
 import { STRINGS as PROC_STRINGS } from '@/app/lib/strings/procedure';
