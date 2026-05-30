@@ -16,18 +16,19 @@ const getPureLink = (rawLink: string | null) => {
 export async function GET(request : Request, {params} : {params: Promise<{service_id: string}>}) {
     try {
         const resolvedParams = await params;
-        const service_id = resolvedParams.service_id;
+        const service_id = decodeURIComponent(resolvedParams.service_id);
 
         const {searchParams} = new URL(request.url);
         const userId = searchParams.get('userId') || 'temp_user';
 
+        // analyze 결과로부터 넘어온 service_name도 지원
         const serviceSQL = `
-            SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps 
+            SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps
             FROM services s
             JOIN service_sources ss ON s.id = ss.service_id
-            WHERE s.id = ?`;
+            WHERE s.id = ? OR s.service_name = ?`;
 
-        const serviceRows = await executeQuery(serviceSQL, [service_id]);
+        const serviceRows = await executeQuery(serviceSQL, [service_id, service_id]);
 
         if (!serviceRows || serviceRows.length === 0) return NextResponse.json({ message: "Data not found" }, {status: 404});
         const data = serviceRows[0];

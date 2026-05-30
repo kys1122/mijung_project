@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopSettings from '../components/TopSettings';
+import ChatFab from '../components/ChatFab';
 
 interface ListInterface {
   id: number;
@@ -13,8 +14,32 @@ interface ListInterface {
 
 const ListScreen : React.FC = () => {
   const [listData, setListData] = useState<ListInterface[]>([]);
+  const [aiSummary, setAiSummary] = useState<string>("");
 
   useEffect(()=> {
+    // 1순위: qa에서 저장한 /analyze 결과 사용
+    try {
+      const cached = localStorage.getItem('analyze_result');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed.matched_services) && parsed.matched_services.length > 0) {
+          const mapped: ListInterface[] = parsed.matched_services.map((s: any, idx: number) => ({
+            id: idx + 1,
+            url: encodeURIComponent(s.service_name),
+            title: { ko: s.service_name, en: s.service_name },
+            description: {
+              ko: `${s.agency ?? ''}${s.eligibility ? ' · ' + s.eligibility : ''}`,
+              en: `${s.agency ?? ''}${s.eligibility ? ' · ' + s.eligibility : ''}`
+            }
+          }));
+          setListData(mapped);
+          if (parsed.summary) setAiSummary(parsed.summary);
+          return;
+        }
+      }
+    } catch (e) { console.warn('analyze_result 파싱 실패:', e); }
+
+    // 2순위(fallback): 기존 documents API
     const getListData = async() => {
       try{
         const response = await fetch(`/api/documents/1`);
@@ -93,7 +118,13 @@ const ListScreen : React.FC = () => {
             {t.sub}
         </p>
 
-        <div className="pt-20 w-full max-w-[450px] flex flex-col items-center gap-10">
+        {aiSummary && (
+          <div className={`mt-4 mx-4 p-4 rounded-[10px] ${isHighContrast ? 'bg-zinc-800 border border-[#ffd000] text-white' : 'bg-[#E9F1FF] text-black'}`}>
+            <p className={`${isLargeFont ? 'text-[22px]' : 'text-[18px]'} leading-snug`}>{aiSummary}</p>
+          </div>
+        )}
+
+        <div className="pt-10 w-full max-w-[450px] flex flex-col items-center gap-10">
           {listData.map((item)=>(
             <div
               key={item.id}
@@ -113,6 +144,7 @@ const ListScreen : React.FC = () => {
           ))}
         </div>
       </div>
+      <ChatFab isHighContrast={isHighContrast} label={lang === 'ko' ? '챗봇' : 'Chat'} />
     </div>
   );
 }

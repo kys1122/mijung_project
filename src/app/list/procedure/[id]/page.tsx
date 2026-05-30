@@ -64,6 +64,38 @@ const ProcedureScreen : React.FC = () => {
     setStep(step.map((s: any) => s.id == stepId ? {...s, isCompleted: !s.isCompleted} : s));
   };
 
+  // 음성으로 듣기 (/api/tts)
+  const [ttsLoadingId, setTtsLoadingId] = useState<number | null>(null);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const handleSpeak = async (s: any) => {
+    const text = `${s.title}. ${s.description ?? ''}`.trim();
+    if (!text) return;
+    try {
+      setTtsLoadingId(s.id);
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'nova' })
+      });
+      if (!res.ok) throw new Error(`tts ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch (e) {
+      console.error('TTS 실패:', e);
+      alert('음성 재생에 실패했습니다.');
+    } finally {
+      setTtsLoadingId(null);
+    }
+  };
+
   const t = {
     ko: { back: "민원 선택으로", progress: "진행률", docs: "필요한 서류 보기", web: "사이트 바로가기", voice: "음성으로 듣기", done: "완료", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드" },
     en: { back: "Back", progress: "Progress", docs: "Required Docs", web: "Website", voice: "Listen", done: "Done", langText: "KO/EN", highContrast: "Contrast", largeFont: "Big Font" }
@@ -135,9 +167,12 @@ const ProcedureScreen : React.FC = () => {
                       {t.web}
                     </button>
                   )}
-                  <button className={`mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] font-bold text-black ${isLargeFont ? 'text-[27px]' : 'text-[23px]'}`}>
+                  <button
+                    onClick={() => handleSpeak(step)}
+                    disabled={ttsLoadingId === step.id}
+                    className={`mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] font-bold text-black ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} disabled:opacity-60`}>
                     <Volume2 className="w-7 h-7"/>
-                    {t.voice}
+                    {ttsLoadingId === step.id ? '재생 중...' : t.voice}
                   </button>
 
                   <button

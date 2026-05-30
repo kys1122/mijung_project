@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopSettings from '../components/TopSettings';
+import ChatFab from '../components/ChatFab';
 
 export default function QaPage() {
   const router = useRouter();
@@ -103,8 +104,9 @@ export default function QaPage() {
   const uploadVoice = async (blob: Blob) => {
     const formData = new FormData();
     formData.append('file', blob, 'voice.wav');
+    formData.append('language', lang);
     try {
-      const response = await fetch('/api/v1/stt', { method: 'POST', body: formData });
+      const response = await fetch('/api/stt', { method: 'POST', body: formData });
       const data = await response.json();
       if (data.text) setSelections(prev => ({ ...prev, detail: data.text }));
     } catch (e) { console.error("STT 전송 실패:", e); }
@@ -122,16 +124,66 @@ export default function QaPage() {
     setIsSelectModalOpen(false);
   };
 
+  // qa 선택값 → /analyze 요청 페이로드 매핑 (서버 실제 키 사용)
+  // 서버 /options: user_types=["노인/고령자","저소득층","외국인","해당없음"],
+  //                age_groups=["10대".."60대 이상"],
+  //                categories=["민원서류","복지","주거","의료","돌봄","생활지원","출입국","교육·문화"]
+  const mapUserType = (t: string): string => {
+    if (t.includes('외국인') || t.toLowerCase().includes('foreigner')) return '외국인';
+    if (t.includes('노인') || t.toLowerCase().includes('senior')) return '노인/고령자';
+    if (t.includes('저소득') || t.toLowerCase().includes('low')) return '저소득층';
+    return '해당없음';
+  };
+  const mapAgeGroup = (a: string): string => {
+    // qa(ko)는 이미 '10대'/'60대 이상' 형식; qa(en)은 '10s'/'60s or older'
+    if (!a) return '';
+    if (/^\d+대/.test(a) || a.includes('이상')) return a;
+    const m = a.match(/(\d+)/);
+    if (!m) return '';
+    return parseInt(m[1], 10) >= 60 ? '60대 이상' : `${m[1]}대`;
+  };
+  const mapCategory = (s: string): string => {
+    if (!s) return '';
+    const map: Record<string, string> = {
+      // 한국어 qa 옵션 → 서버 카테고리
+      '민원': '민원서류',
+      '복지': '복지',
+      '주거': '주거',
+      '의료': '의료',
+      '일자리': '', // 서버에 매칭되는 카테고리 없음 → 빈 값 (전체 검색)
+      // 영어 qa 옵션
+      'Civil Service': '민원서류',
+      Welfare: '복지',
+      Housing: '주거',
+      Medical: '의료',
+      Jobs: '',
+    };
+    return s in map ? map[s] : s;
+  };
+
   const handleSubmit = async () => {
-    const userContext = JSON.stringify({ ...selections, lang, submitted_at: new Date().toISOString() });
+    const userContext = { ...selections, lang, submitted_at: new Date().toISOString() };
+    localStorage.setItem('final_context', JSON.stringify(userContext));
+
     try {
-      await fetch('/api/v1/user-context', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: userContext
+        body: JSON.stringify({
+          user_type: mapUserType(selections.type),
+          age_group: mapAgeGroup(selections.age),
+          category: mapCategory(selections.service),
+          detail: selections.detail,
+          lang,
+          visa_type: ''
+        })
       });
-    } catch (e) { console.log("서버 제출 오류"); }
-    localStorage.setItem('final_context', userContext);
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('analyze_result', JSON.stringify(data));
+      }
+    } catch (e) { console.error('analyze 호출 실패:', e); }
+
     router.push('/list');
   };
 
@@ -257,6 +309,8 @@ export default function QaPage() {
           </div>
         </div>
       )}
+
+      <ChatFab isHighContrast={isHighContrast} label={lang === 'ko' ? '챗봇' : 'Chat'} />
 
       {isVoiceModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-[300]">
