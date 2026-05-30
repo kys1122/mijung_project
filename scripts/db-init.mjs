@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import mariadb from 'mariadb';
+import * as mariadb from 'mariadb';
 
 const sql = readFileSync(new URL('../db/schema.sql', import.meta.url), 'utf-8');
 

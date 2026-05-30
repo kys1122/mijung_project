@@ -3,10 +3,13 @@ import * as mariadb from 'mariadb';
 // DB 연결 pool
 const pool = mariadb.createPool({
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    connectionLimit: 5 // 최대 동시 연결 수
+    connectionLimit: 5,
+    insertIdAsNumber: true,
+    bigIntAsNumber: true,
 });
 
 export async function executeQuery(query: string, params?: any[]) {
