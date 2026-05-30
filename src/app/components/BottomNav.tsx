@@ -6,7 +6,7 @@ import { MessageCircle, ListChecks, ClipboardList, User } from "lucide-react";
 
 const TABS = [
   { key: 'chat',      ko: '챗봇',     en: 'Chat',     icon: MessageCircle, path: '/chat' },
-  { key: 'list',      ko: '민원',     en: 'Services', icon: ListChecks,    path: '/list' },
+  { key: 'list',      ko: '민원',     en: 'Services', icon: ListChecks,    path: '/recommend' },
   { key: 'dashboard', ko: '내 진행', en: 'My',       icon: ClipboardList, path: '/dashboard' },
   { key: 'account',   ko: '내 계정', en: 'Account',  icon: User,          path: '/' },
 ];
@@ -27,7 +27,7 @@ export default function BottomNav() {
   if (loggedIn !== true) return null;
 
   const isActive = (path: string) => {
-    if (path === '/list') return pathname === '/list' || pathname?.startsWith('/list/') || false;
+    if (path === '/recommend') return pathname === '/recommend' || pathname?.startsWith('/list/') || false;
     return pathname === path;
   };
 

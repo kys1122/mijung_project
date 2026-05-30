@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -296,14 +296,24 @@ export default function ChatPage() {
     <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
       <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
         <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
-          <button
-            onClick={handleNewChat}
-            className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`}
-            aria-label="새 대화"
-          >
-            <PenSquare className="w-5 h-5" />
-            <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleNewChat}
+              className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`}
+              aria-label="새 대화"
+            >
+              <PenSquare className="w-5 h-5" />
+              <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
+            </button>
+            <button
+              onClick={() => router.push('/list')}
+              className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`}
+              aria-label="대화 기록"
+              title={lang === 'en' ? 'History' : '기록'}
+            >
+              <History className="w-5 h-5" />
+            </button>
+          </div>
           <TopSettings
             lang={lang} setLang={handleLang}
             isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
