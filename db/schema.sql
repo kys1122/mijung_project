@@ -60,3 +60,23 @@ CREATE TABLE IF NOT EXISTS mijung_service_progress (
   UNIQUE KEY uk_user_service (user_id, service_id),
   KEY idx_user_updated (user_id, updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- mijung 전용: ChatGPT 식 챗봇 대화 세션
+CREATE TABLE IF NOT EXISTS mijung_chat_sessions (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id VARCHAR(100) NOT NULL,
+  title VARCHAR(200) NOT NULL DEFAULT '새 대화',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_user_updated (user_id, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS mijung_chat_messages (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  session_id INT NOT NULL,
+  role VARCHAR(20) NOT NULL,
+  content LONGTEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_msg_session FOREIGN KEY (session_id) REFERENCES mijung_chat_sessions(id) ON DELETE CASCADE,
+  KEY idx_session_created (session_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

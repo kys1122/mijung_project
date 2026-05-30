@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronLeft, Send, Mic, Sparkles } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Send, Mic, Sparkles, PenSquare } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams.get('session');
+
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
@@ -21,6 +25,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [sessionId, setSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -44,6 +49,23 @@ export default function ChatPage() {
 
   const t = useTranslations<ChatStrings>('chat', CHAT_STRINGS as unknown as { ko: ChatStrings; en: ChatStrings }, lang);
 
+  // URL의 ?session=... 이 있으면 그 세션 로드
+  useEffect(() => {
+    if (!sessionParam) { setSessionId(null); setMessages([]); return; }
+    const sid = Number(sessionParam);
+    if (!Number.isInteger(sid) || sid <= 0) return;
+    if (!getAccessToken()) return;
+    (async () => {
+      try {
+        const res = await apiFetch(`/api/chat-sessions/${sid}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setSessionId(data.session.id);
+        setMessages((data.messages ?? []).map((m: any) => ({ role: m.role, content: m.content })));
+      } catch (e) { console.error('세션 로드 실패:', e); }
+    })();
+  }, [sessionParam]);
+
   const userTypeFromContext = (): string => {
     try {
       const ctx = JSON.parse(localStorage.getItem('final_context') ?? 'null');
@@ -55,7 +77,6 @@ export default function ChatPage() {
     } catch {}
     return '';
   };
-
   const visaFromContext = (): string => {
     try {
       const ctx = JSON.parse(localStorage.getItem('final_context') ?? 'null');
@@ -64,7 +85,7 @@ export default function ChatPage() {
     return '';
   };
 
-  const sessionId = (() => {
+  const externalSessionId = (() => {
     if (typeof window === 'undefined') return undefined;
     let sid = localStorage.getItem('chat_session_id');
     if (!sid) {
@@ -74,6 +95,40 @@ export default function ChatPage() {
     return sid;
   })();
 
+  // 로그인 사용자만, 현재 세션이 없으면 생성해서 ID 반환
+  const ensureSession = async (): Promise<number | null> => {
+    if (!getAccessToken()) return null;
+    if (sessionId) return sessionId;
+    try {
+      const res = await apiFetch('/api/chat-sessions', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data?.success && data.session?.id) {
+        setSessionId(data.session.id);
+        return data.session.id;
+      }
+    } catch (e) { console.error('세션 생성 실패:', e); }
+    return null;
+  };
+
+  const saveMessage = async (sid: number, role: 'user' | 'assistant', content: string) => {
+    try {
+      await apiFetch(`/api/chat-sessions/${sid}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ role, content }),
+      });
+    } catch (e) { console.error('메시지 저장 실패:', e); }
+  };
+
+  const handleNewChat = () => {
+    setSessionId(null);
+    setMessages([]);
+    setInput('');
+    router.replace('/chat');
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || sending) return;
@@ -81,6 +136,10 @@ export default function ChatPage() {
     const next: Msg[] = [...messages, { role: 'user', content: text }, { role: 'assistant', content: '' }];
     setMessages(next);
     setSending(true);
+
+    // 로그인 사용자: 세션 보장 + user 메시지 저장
+    const sid = await ensureSession();
+    if (sid) await saveMessage(sid, 'user', text);
 
     try {
       const res = await fetch('/api/chat/stream', {
@@ -92,12 +151,12 @@ export default function ChatPage() {
           visa_type: visaFromContext(),
           lang,
           history: messages.map(m => ({ role: m.role, content: m.content })),
-          session_id: sessionId,
+          session_id: externalSessionId,
         }),
       });
 
       if (!res.ok || !res.body) {
-        await fallbackToChat(text, next);
+        await fallbackToChat(text, next, sid);
         return;
       }
 
@@ -139,16 +198,20 @@ export default function ChatPage() {
         }
       }
 
-      if (!acc) await fallbackToChat(text, next);
+      if (!acc) {
+        await fallbackToChat(text, next, sid);
+      } else if (sid) {
+        await saveMessage(sid, 'assistant', acc);
+      }
     } catch (e) {
       console.error('chat stream error:', e);
-      await fallbackToChat(text, next);
+      await fallbackToChat(text, next, sid);
     } finally {
       setSending(false);
     }
   };
 
-  const fallbackToChat = async (question: string, current: Msg[]) => {
+  const fallbackToChat = async (question: string, current: Msg[], sid: number | null) => {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -159,18 +222,17 @@ export default function ChatPage() {
           visa_type: visaFromContext(),
           lang,
           history: current.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
-          session_id: sessionId,
+          session_id: externalSessionId,
         }),
       });
       const data = await res.json();
+      const answer = data.answer ?? data.error ?? t.failResponse;
       setMessages(prev => {
         const copy = [...prev];
-        copy[copy.length - 1] = {
-          role: 'assistant',
-          content: data.answer ?? data.error ?? t.failResponse
-        };
+        copy[copy.length - 1] = { role: 'assistant', content: answer };
         return copy;
       });
+      if (sid && answer) await saveMessage(sid, 'assistant', String(answer));
     } catch (e) {
       console.error('chat fallback error:', e);
       setMessages(prev => {
@@ -220,24 +282,27 @@ export default function ChatPage() {
   const sendBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
     : 'bg-blue-600 hover:bg-blue-700 text-white';
+  const newChatBtn = isHighContrast
+    ? 'text-yellow-400 hover:bg-zinc-800'
+    : 'text-blue-600 hover:bg-blue-50';
   const micBtn = isRecording
     ? 'bg-red-500 hover:bg-red-600 text-white'
     : (isHighContrast ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white border border-slate-200 hover:bg-slate-100 text-blue-600');
 
   const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
   const sizeTitle = isLargeFont ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl';
-  const sizeBack = isLargeFont ? 'text-lg' : 'text-base';
 
   return (
     <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
       <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
         <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
           <button
-            onClick={() => router.back()}
-            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
+            onClick={handleNewChat}
+            className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`}
+            aria-label="새 대화"
           >
-            <ChevronLeft className="w-5 h-5" />
-            <span className={`font-medium ${sizeBack}`}>{t.back}</span>
+            <PenSquare className="w-5 h-5" />
+            <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
           </button>
           <TopSettings
             lang={lang} setLang={handleLang}

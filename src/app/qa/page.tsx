@@ -123,7 +123,7 @@ export default function QaPage() {
         localStorage.setItem('analyze_result', JSON.stringify(data));
       }
     } catch (e) { console.error('analyze 호출 실패:', e); }
-    router.push('/list');
+    router.push('/recommend');
   };
 
   // --- 디자인 토큰 ---
