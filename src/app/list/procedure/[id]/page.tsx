@@ -4,6 +4,9 @@ import { Check, ChevronLeft, ExternalLink, Volume2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
+import { useTranslations } from '../../../lib/i18n';
+import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
+import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 
 const ProcedureScreen : React.FC = () => {
   const router = useRouter();
@@ -15,20 +18,20 @@ const ProcedureScreen : React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   //모드
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
 
   useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') as 'ko' | 'en';
+    const savedLang = localStorage.getItem('app_lang') ?? '';
     const savedContrast = localStorage.getItem('app_contrast') === 'true';
     const savedFont = localStorage.getItem('app_font') === 'true';
-    if (savedLang) setLang(savedLang);
+    if (isSupported(savedLang)) setLang(savedLang);
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
   }, []);
 
-  const handleLang = (newLang: 'ko' | 'en') => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
+  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
   const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
   const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
@@ -96,17 +99,14 @@ const ProcedureScreen : React.FC = () => {
     }
   };
 
-  const t = {
-    ko: { back: "민원 선택으로", progress: "진행률", docs: "필요한 서류 보기", web: "사이트 바로가기", voice: "음성으로 듣기", done: "완료", langText: "한/영변환", highContrast: "고대비모드", largeFont: "큰글씨모드" },
-    en: { back: "Back", progress: "Progress", docs: "Required Docs", web: "Website", voice: "Listen", done: "Done", langText: "KO/EN", highContrast: "Contrast", largeFont: "Big Font" }
-  }[lang] as any;
+  const t = useTranslations<ProcedureStrings>('procedure', PROC_STRINGS as unknown as { ko: ProcedureStrings; en: ProcedureStrings }, lang);
 
   const themeClass = isHighContrast ? "bg-black text-yellow-400" : "bg-white text-black";
   const themeClass2 = isHighContrast ? "bg-black text-white" : "bg-white text-black";
   const headerBorder = isHighContrast ? "border-b border-white" : "border-b-2 border-[#C9C9C9]";
   const textClass = isHighContrast ? 'text-white' : 'text-black'
 
-  if (loading) return <div className={`min-h-screen flex items-center justify-center ${themeClass2}`}>로딩 중...</div>;
+  if (loading) return <div className={`min-h-screen flex items-center justify-center ${themeClass2}`}>{t.loading}</div>;
 
   return(
     <div className={`min-h-screen flex flex-col items-center ${themeClass2}`}>
@@ -126,7 +126,7 @@ const ProcedureScreen : React.FC = () => {
           />
         </header>
 
-        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'ko' ? serviceName.ko : serviceName.en}</h1>
+        <h1 className={`pt-[15px] ${isLargeFont ? 'text-[37px]' : 'text-[33px]'} font-bold`}>{lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}</h1>
         
         <div className={`mt-[25px] mx-2 pt-[10px] px-5 pb-4 ${isHighContrast ? 'bg-zinc-800 border-2 border-[#ffd000]' : 'bg-[#E9F1FF]'} rounded-[15px]`}>
           <span className={`text-center ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} font-bold block`}>{t.progress}</span>
@@ -172,7 +172,7 @@ const ProcedureScreen : React.FC = () => {
                     disabled={ttsLoadingId === step.id}
                     className={`mx-4.5 py-1.5 flex items-center justify-center bg-[#E4E4E4] rounded-[10px] font-bold text-black ${isLargeFont ? 'text-[27px]' : 'text-[23px]'} disabled:opacity-60`}>
                     <Volume2 className="w-7 h-7"/>
-                    {ttsLoadingId === step.id ? '재생 중...' : t.voice}
+                    {ttsLoadingId === step.id ? t.voicePlaying : t.voice}
                   </button>
 
                   <button
