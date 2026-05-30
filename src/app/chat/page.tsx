@@ -10,88 +10,19 @@ import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
+type Option = { label: string; value: string; next_id?: number | null };
+type Question = {
+  id: number;
+  question_text: string;
+  answer_options: Option[] | null;
+  next_module: string | null;
+  sort_order?: number;
+};
 type Service = { service_name: string; agency?: string; eligibility?: string };
-
-// 단계별 질문 정의 — 챗봇 백엔드의 들쭉날쭉한 트리 대신 고정된 4단계
-type StepKey = 'type' | 'age' | 'service' | 'detail';
-const STEPS: { key: StepKey; question: { ko: string; en: string }; options?: { ko: string[]; en: string[] }; freeText?: boolean }[] = [
-  {
-    key: 'type',
-    question: { ko: '어떤 분이세요?', en: 'Who are you?' },
-    options: {
-      ko: ['외국인', '노인 (65세 이상)', '저소득층', '해당없음'],
-      en: ['Foreigner', 'Senior (65+)', 'Low Income', 'N/A'],
-    },
-  },
-  {
-    key: 'age',
-    question: { ko: '나이대가 어떻게 되세요?', en: 'What is your age group?' },
-    options: {
-      ko: ['10대', '20대', '30대', '40대', '50대', '60대 이상'],
-      en: ['10s', '20s', '30s', '40s', '50s', '60s or older'],
-    },
-  },
-  {
-    key: 'service',
-    question: { ko: '어떤 민원 유형이 필요하세요?', en: 'What kind of service do you need?' },
-    options: {
-      // 챗봇 백엔드가 인식하는 한글 카테고리 (chatbot/app.py:486-559)
-      ko: ['민원서류', '복지', '주거', '의료', '돌봄', '생활지원', '출입국', '교육·문화', '잘 모르겠어요'],
-      en: ['Civil documents', 'Welfare', 'Housing', 'Medical', 'Care', 'Living support', 'Immigration', 'Education/Culture', 'Not sure'],
-    },
-  },
-  {
-    key: 'detail',
-    question: { ko: '구체적으로 어떤 상황이세요?', en: 'Tell us about your situation' },
-    freeText: true,
-  },
-];
-
-const mapUserType = (val: string): string => {
-  if (val.includes('외국인') || val.toLowerCase().includes('foreigner')) return '외국인';
-  if (val.includes('노인') || val.toLowerCase().includes('senior')) return '노인/고령자';
-  if (val.includes('저소득') || val.toLowerCase().includes('low')) return '저소득층';
-  return '해당없음';
-};
-const mapAgeGroup = (val: string): string => {
-  if (!val) return '';
-  if (/^\d+대/.test(val) || val.includes('이상')) return val;
-  const m = val.match(/(\d+)/);
-  if (!m) return '';
-  return parseInt(m[1], 10) >= 60 ? '60대 이상' : `${m[1]}대`;
-};
-// 챗봇 카테고리(한글) 그대로 통과 + 영어/구버전 옵션 한글 매핑
-const mapCategory = (val: string): string => {
-  if (!val) return '잘 모르겠어요';
-  const map: Record<string, string> = {
-    // 영어 라벨 → 한글 카테고리
-    'Civil documents': '민원서류',
-    'Welfare': '복지',
-    'Housing': '주거',
-    'Medical': '의료',
-    'Care': '돌봄',
-    'Living support': '생활지원',
-    'Immigration': '출입국',
-    'Education/Culture': '교육·문화',
-    'Not sure': '잘 모르겠어요',
-    // 구버전 한국어 옵션 호환
-    '민원/서류': '민원서류',
-    '민원': '민원서류',
-    '일자리': '잘 모르겠어요',
-    '기타/모르겠음': '잘 모르겠어요',
-    'Jobs': '잘 모르겠어요',
-    'Civil/Documents': '민원서류',
-    'Other/Not sure': '잘 모르겠어요',
-  };
-  if (val in map) return map[val];
-  // 챗봇이 알고 있는 한글 카테고리는 그대로
-  const known = ['민원서류', '복지', '주거', '의료', '돌봄', '생활지원', '출입국', '교육·문화', '잘 모르겠어요'];
-  return known.includes(val) ? val : '잘 모르겠어요';
-};
 
 type Msg =
   | { kind: 'text'; role: 'user' | 'assistant'; content: string }
-  | { kind: 'options'; role: 'assistant'; stepIdx: number }
+  | { kind: 'options'; role: 'assistant'; question: Question }
   | { kind: 'cards'; role: 'assistant'; intro: string; services: Service[] }
   | { kind: 'detail'; role: 'assistant'; serviceName: string; content: string }
   | { kind: 'checklist'; role: 'assistant'; serviceName: string; content: string }
@@ -111,7 +42,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [intakeDone, setIntakeDone] = useState(false);
-  const [answers, setAnswers] = useState<Record<StepKey, string>>({ type: '', age: '', service: '', detail: '' });
+  const [qaSessionId, setQaSessionId] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [chatSessionId, setChatSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -167,78 +99,92 @@ export default function ChatPage() {
           } catch (e) { console.error('세션 로드 실패:', e); }
         }
       }
-      startIntake();
+      await startIntake();
     })();
   }, [sessionParam]);
 
-  const startIntake = () => {
-    setMessages([
-      { kind: 'text', role: 'assistant', content: lang === 'en' ? "Hello! I'll find services that fit you. A few quick questions first." : '안녕하세요! 맞춤 민원을 찾아드릴게요. 몇 가지만 여쭤볼게요.' },
-      { kind: 'options', role: 'assistant', stepIdx: 0 },
-    ]);
-  };
-
-  const stepFromIdx = (idx: number) => STEPS[idx];
-  const labelOf = (step: typeof STEPS[number], value: string) => {
-    if (!step.options) return value;
-    const ko = step.options.ko;
-    const en = step.options.en;
-    const koIdx = ko.indexOf(value);
-    if (koIdx >= 0) return lang === 'en' ? en[koIdx] : ko[koIdx];
-    const enIdx = en.indexOf(value);
-    if (enIdx >= 0) return lang === 'en' ? en[enIdx] : ko[enIdx];
-    return value;
-  };
-
-  const pickIntakeOption = (stepIdx: number, value: string) => {
-    if (sending) return;
-    const step = STEPS[stepIdx];
-    const displayLabel = labelOf(step, value);
-    setAnswers(prev => ({ ...prev, [step.key]: value }));
-    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: displayLabel }]);
-    const nextIdx = stepIdx + 1;
-    if (nextIdx < STEPS.length) {
-      setMessages(prev => [...prev, { kind: 'options', role: 'assistant', stepIdx: nextIdx }]);
-    } else {
-      runAnalyze({ ...answers, [step.key]: value });
+  // 챗봇의 questions/start에서 루트 첫 질문 받아 표시
+  const startIntake = async () => {
+    try {
+      const res = await fetch(`/api/qa/start?lang=${lang}`);
+      const data = await res.json();
+      const qs: Question[] = data?.questions ?? [];
+      // sort_order=1 이 트리 메인 진입점
+      const first = qs.find(q => q.sort_order === 1) ?? qs[0];
+      if (first) {
+        setMessages([
+          { kind: 'text', role: 'assistant', content: lang === 'en' ? "Hello! I'll find services that match. Tap an option, or type a question if you prefer." : '안녕하세요! 맞춤 민원을 찾아드릴게요. 옵션을 골라주시거나, 직접 질문하셔도 됩니다.' },
+          { kind: 'options', role: 'assistant', question: first },
+        ]);
+      } else {
+        setMessages([{ kind: 'text', role: 'assistant', content: lang === 'en' ? 'Ask me anything.' : '무엇이든 물어보세요.' }]);
+        setIntakeDone(true);
+      }
+    } catch (e) {
+      console.error('questions/start 실패:', e);
+      setMessages([{ kind: 'text', role: 'assistant', content: t.failServer }]);
     }
   };
 
-  const submitIntakeText = () => {
-    if (sending || !input.trim()) return;
-    const text = input.trim();
-    setInput('');
-    setAnswers(prev => ({ ...prev, detail: text }));
-    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: text }]);
-    runAnalyze({ ...answers, detail: text });
-  };
-
-  const skipIntakeText = () => {
+  // 옵션 선택 → 트리 다음 질문 받기
+  const pickOption = async (q: Question, opt: Option) => {
     if (sending) return;
-    const skipLabel = lang === 'en' ? '(skipped)' : '(건너뜀)';
-    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: skipLabel }]);
-    runAnalyze({ ...answers, detail: '' });
-  };
-
-  const runAnalyze = async (finalAnswers: Record<StepKey, string>) => {
     setSending(true);
-    setMessages(prev => [...prev, { kind: 'thinking', role: 'assistant' }]);
+    setMessages(prev => [...prev, { kind: 'text', role: 'user', content: opt.label }, { kind: 'thinking', role: 'assistant' }]);
+    const newAnswers = { ...answers, [String(q.id)]: opt.value };
+    setAnswers(newAnswers);
+
     try {
-      const payload = {
-        user_type: mapUserType(finalAnswers.type),
-        age_group: mapAgeGroup(finalAnswers.age),
-        category: mapCategory(finalAnswers.service),
-        detail: finalAnswers.detail,
-        lang,
-        visa_type: '',
-      };
-      const res = await fetch('/api/analyze', {
+      const res = await fetch('/api/qa/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ question_id: q.id, answer_value: opt.value, session_id: qaSessionId, lang }),
       });
       const data = await res.json();
-      const matched: Service[] = (data?.matched_services ?? []).map((s: any) => ({
+      if (data?.session_id) setQaSessionId(data.session_id);
+
+      // thinking 제거
+      setMessages(prev => prev.filter(m => m.kind !== 'thinking'));
+
+      // 자유 채팅 분기로 진입
+      if (data?.next_module === 'free_chat' || q.next_module === 'free_chat') {
+        setMessages(prev => [...prev, { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Type your question below and I will look it up.' : '아래에 직접 입력해주시면 찾아드릴게요.' }]);
+        setIntakeDone(true);
+        setSending(false);
+        return;
+      }
+
+      if (data?.done) {
+        const merged = data.answers ?? newAnswers;
+        await runClassify(merged, data?.session_id ?? qaSessionId);
+        return;
+      }
+      if (data?.next_question) {
+        const next: Question = data.next_question;
+        setMessages(prev => [...prev, { kind: 'options', role: 'assistant', question: next }]);
+        setSending(false);
+      } else {
+        // 안전망: next_question도 done도 없으면 그냥 classify
+        await runClassify(newAnswers, qaSessionId);
+      }
+    } catch (e) {
+      console.error('answer 호출 실패:', e);
+      setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
+      setSending(false);
+    }
+  };
+
+  // /classify → 후보 카드
+  const runClassify = async (finalAnswers: Record<string, string>, sid: number | null) => {
+    setMessages(prev => [...prev, { kind: 'thinking', role: 'assistant' }]);
+    try {
+      const res = await fetch('/api/qa/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: finalAnswers, session_id: sid }),
+      });
+      const data = await res.json();
+      const matched: Service[] = ((data?.matched_services ?? data?.services ?? data?.results ?? []) as any[]).map((s: any) => ({
         service_name: s.service_name,
         agency: s.agency ?? s.official_name,
         eligibility: s.eligibility,
@@ -249,26 +195,23 @@ export default function ChatPage() {
             : `본인에게 맞을 만한 민원 ${matched.length}개를 찾았어요. 하나를 골라주시면 자세히 안내해드릴게요.`)
         : (lang === 'en' ? 'No matching services. Try changing your answers or ask freely below.' : '맞는 민원을 찾지 못했어요. 답변을 바꿔보시거나 아래에서 자유롭게 질문해주세요.');
 
-      localStorage.setItem('analyze_result', JSON.stringify({ matched_services: matched, summary: data?.summary, answers: finalAnswers }));
-      localStorage.setItem('final_context', JSON.stringify({ type: finalAnswers.type, age: finalAnswers.age, service: finalAnswers.service, detail: finalAnswers.detail, lang, submitted_at: new Date().toISOString() }));
+      localStorage.setItem('analyze_result', JSON.stringify({ matched_services: matched, summary: data?.summary, answers: finalAnswers, session_id: sid }));
+      localStorage.setItem('final_context', JSON.stringify({ answers: finalAnswers, lang, submitted_at: new Date().toISOString() }));
 
-      const newMsgs: Msg[] = [
-        { kind: 'cards', role: 'assistant', intro, services: matched },
-      ];
-      if (data?.summary) {
-        newMsgs.push({ kind: 'text', role: 'assistant', content: data.summary });
-      }
+      const newMsgs: Msg[] = [{ kind: 'cards', role: 'assistant', intro, services: matched }];
+      if (data?.summary) newMsgs.push({ kind: 'text', role: 'assistant', content: data.summary });
+
       setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), ...newMsgs]);
       setIntakeDone(true);
     } catch (e) {
-      console.error('analyze 실패:', e);
+      console.error('classify 실패:', e);
       setMessages(prev => [...prev.filter(m => m.kind !== 'thinking'), { kind: 'text', role: 'assistant', content: t.failServer }]);
     } finally {
       setSending(false);
     }
   };
 
-  // --- 카드 선택 → 설명 + 체크리스트 ---
+  // 카드(민원) 선택 → 상세 + 체크리스트
   const pickService = async (svc: Service) => {
     if (sending) return;
     setSending(true);
@@ -279,10 +222,11 @@ export default function ChatPage() {
     ]);
 
     const userType = (() => {
-      const a = answers.type;
-      if (a?.includes('외국인')) return 'foreigner';
-      if (a?.includes('노인') || a?.includes('고령')) return 'senior';
-      if (a?.includes('저소득')) return 'low_income';
+      // answers에서 user_type 추정 (트리의 어떤 답변이든 키워드 보고 결정)
+      const allVals = Object.values(answers).join(' ');
+      if (allVals.includes('외국인')) return 'foreigner';
+      if (allVals.includes('노인') || allVals.includes('고령')) return 'senior';
+      if (allVals.includes('저소득')) return 'low_income';
       return 'general';
     })();
 
@@ -305,7 +249,7 @@ export default function ChatPage() {
     }
   };
 
-  // --- 자유 채팅 ---
+  // 자유 채팅
   const ensureChatSession = async (): Promise<number | null> => {
     if (!getAccessToken()) return null;
     if (chatSessionId) return chatSessionId;
@@ -321,20 +265,7 @@ export default function ChatPage() {
   };
 
   const sendFreeChat = async () => {
-    if (!intakeDone) {
-      // intake 중에는 free text input이 detail 단계에서만 사용되므로 분기
-      const currentStepIdx = (() => {
-        for (let i = messages.length - 1; i >= 0; i--) {
-          const m = messages[i];
-          if (m.kind === 'options') return m.stepIdx;
-        }
-        return -1;
-      })();
-      if (currentStepIdx === STEPS.length - 1) {
-        submitIntakeText();
-      }
-      return;
-    }
+    if (!intakeDone) return; // intake 중 입력바 비활성
     const text = input.trim();
     if (!text || sending) return;
     setInput('');
@@ -425,18 +356,20 @@ export default function ChatPage() {
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     setMessages([]);
-    setAnswers({ type: '', age: '', service: '', detail: '' });
+    setAnswers({});
+    setQaSessionId(null);
     setChatSessionId(null);
     setIntakeDone(false);
     setInput('');
     router.replace('/chat');
     initRef.current = false;
-    startIntake();
+    await startIntake();
     initRef.current = true;
   };
 
+  // 음성
   const startRec = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -456,7 +389,7 @@ export default function ChatPage() {
   };
   const stopRec = () => { const r = mediaRecorderRef.current; if (r && r.state !== 'inactive') r.stop(); setIsRecording(false); };
 
-  // --- 디자인 토큰 ---
+  // 디자인 토큰
   const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
   const headerBorder = isHighContrast ? 'border-zinc-700' : 'border-slate-200/70';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
@@ -480,7 +413,7 @@ export default function ChatPage() {
   const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
   const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
 
-  // 간단 마크다운 렌더 — # 헤더, **굵게**, 리스트(-, *, 1.), 빈줄
+  // 마크다운 렌더
   const renderInline = (text: string, keyPrefix: string) => {
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((p, j) =>
@@ -524,21 +457,9 @@ export default function ChatPage() {
     });
   };
 
-  // intake 단계 마지막에서만 input이 활성화 (detail step)
-  const currentIntakeStep = (() => {
-    if (intakeDone) return -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.kind === 'options') return m.stepIdx;
-    }
-    return -1;
-  })();
-  const inputEnabled = intakeDone || currentIntakeStep === STEPS.length - 1;
   const inputPlaceholder = intakeDone
     ? t.placeholder
-    : (currentIntakeStep === STEPS.length - 1
-      ? (lang === 'en' ? 'Type or skip below…' : '직접 입력하거나 아래 건너뛰기')
-      : (lang === 'en' ? 'Pick an option above' : '위 옵션을 선택해주세요'));
+    : (lang === 'en' ? 'Pick an option above' : '위 옵션을 선택해주세요');
 
   return (
     <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
@@ -593,42 +514,29 @@ export default function ChatPage() {
               );
             }
             if (m.kind === 'options') {
-              const step = stepFromIdx(m.stepIdx);
-              const opts = step.options ? (lang === 'en' ? step.options.en : step.options.ko) : [];
-              const koOpts = step.options?.ko ?? [];
-              const isLastIntake = m.stepIdx === STEPS.length - 1 && i === messages.length - 1;
+              const isLastOptions = i === messages.length - 1 && !sending;
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${botBubble} ${sizeBubble}`}>
-                    <span className={`mr-2 text-xs font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                      {m.stepIdx + 1}/{STEPS.length}
-                    </span>
-                    {step.question[lang === 'en' ? 'en' : 'ko']}
+                    {m.question.question_text}
                   </div>
-                  {step.options ? (
+                  {m.question.answer_options && m.question.answer_options.length > 0 ? (
                     <div className="flex flex-col gap-2">
-                      {opts.map((label, optIdx) => {
-                        const koValue = koOpts[optIdx] ?? label;
-                        return (
-                          <button
-                            key={koValue}
-                            disabled={sending || m.stepIdx !== currentIntakeStep || intakeDone}
-                            onClick={() => pickIntakeOption(m.stepIdx, koValue)}
-                            className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
+                      {m.question.answer_options.map((opt) => (
+                        <button
+                          key={opt.value}
+                          disabled={!isLastOptions}
+                          onClick={() => pickOption(m.question, opt)}
+                          className={`w-full px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
-                  ) : isLastIntake && (
-                    <button
-                      onClick={skipIntakeText}
-                      disabled={sending}
-                      className={`self-start px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${isHighContrast ? 'text-zinc-300 hover:text-yellow-400' : 'text-slate-500 hover:text-blue-600'}`}
-                    >
-                      {lang === 'en' ? 'Skip this' : '건너뛰기'}
-                    </button>
+                  ) : (
+                    <p className={`text-xs ${subtleColor} px-1`}>
+                      {lang === 'en' ? 'Type your answer below.' : '아래에 직접 입력해주세요.'}
+                    </p>
                   )}
                 </div>
               );
@@ -693,7 +601,7 @@ export default function ChatPage() {
 
         <div className={`px-5 sm:px-8 py-3 border-t ${headerBorder}`}>
           <div className="flex items-end gap-2">
-            <button onClick={isRecording ? stopRec : startRec} disabled={!inputEnabled || sending}
+            <button onClick={isRecording ? stopRec : startRec} disabled={!intakeDone || sending}
               className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm disabled:opacity-40 ${micBtn}`} aria-label="voice">
               <Mic className="w-5 h-5" />
             </button>
@@ -703,10 +611,10 @@ export default function ChatPage() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendFreeChat(); } }}
               placeholder={inputPlaceholder}
               rows={1}
-              disabled={!inputEnabled || sending}
+              disabled={!intakeDone || sending}
               className={`flex-1 resize-none px-4 py-2.5 rounded-2xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 ${inputBg} ${sizeBubble}`}
             />
-            <button onClick={sendFreeChat} disabled={!inputEnabled || sending || !input.trim()}
+            <button onClick={sendFreeChat} disabled={!intakeDone || sending || !input.trim()}
               className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label="send">
               <Send className="w-5 h-5" />
             </button>
