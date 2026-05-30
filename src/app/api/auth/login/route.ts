@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         // 비밀번호 일치 여부 검증
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
         if (!isPasswordValid) {
-            return NextResponse.json({ success: false, message: "이메일 또는 비밀번호가 일치하지 않습니다." });
+            return NextResponse.json({ success: false, message: "이메일 또는 비밀번호가 일치하지 않습니다." }, { status: 401 });
         }
 
         // JWT 토큰 발급
