@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, ChevronLeft, ExternalLink, FileText, Volume2 } from "lucide-react";
+import { Check, ChevronLeft, ExternalLink, FileText, Volume2, Building2, Coins, ScrollText, Info } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
@@ -17,6 +17,14 @@ const ProcedureScreen: React.FC = () => {
 
   const [step, setStep] = useState<any[]>([]);
   const [serviceName, setServiceName] = useState({ ko: "", en: "" });
+  const [info, setInfo] = useState<{
+    overview: string | null;
+    eligibility: string | null;
+    ministry: string | null;
+    department: string | null;
+    fee: string | null;
+    official_link: string | null;
+  }>({ overview: null, eligibility: null, ministry: null, department: null, fee: null, official_link: null });
   const [loading, setLoading] = useState(true);
 
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
@@ -46,6 +54,14 @@ const ProcedureScreen: React.FC = () => {
         setServiceName({
           ko: data.name,
           en: data.nameEn || data.name
+        });
+        setInfo({
+          overview: data.overview ?? null,
+          eligibility: data.eligibility ?? null,
+          ministry: data.ministry ?? null,
+          department: data.department ?? null,
+          fee: data.fee ?? null,
+          official_link: data.official_link ?? null,
         });
       } catch (err) {
         console.error("데이터 로드 실패:", err);
@@ -175,6 +191,58 @@ const ProcedureScreen: React.FC = () => {
         <h1 className={`mt-4 font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
           {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
         </h1>
+
+        {(info.overview || info.eligibility || info.ministry || info.fee) && (
+          <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Info className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
+                {lang === 'en' ? 'About this service' : '민원 안내'}
+              </h2>
+            </div>
+            {info.overview && (
+              <p className={`leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
+                {info.overview}
+              </p>
+            )}
+            {info.eligibility && (
+              <div className="mt-3">
+                <p className={`font-semibold ${titleColor} ${sizeBody}`}>
+                  {lang === 'en' ? 'Who is eligible' : '신청 자격'}
+                </p>
+                <p className={`mt-1 leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
+                  {info.eligibility}
+                </p>
+              </div>
+            )}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(info.ministry || info.department) && (
+                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{info.ministry || info.department}</span>
+                </div>
+              )}
+              {info.fee && (
+                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
+                  <Coins className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{info.fee}</span>
+                </div>
+              )}
+            </div>
+            {info.official_link && (
+              <button
+                onClick={() => {
+                  const url = info.official_link!.startsWith('http') ? info.official_link! : `https://${info.official_link}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                className={`mt-4 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+              >
+                <ScrollText className="w-4 h-4" />
+                {lang === 'en' ? 'Official page' : '공식 안내'}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex items-center justify-between">

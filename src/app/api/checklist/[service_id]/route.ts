@@ -107,7 +107,15 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
         return NextResponse.json({
             id: data.id,
             name: data.service_name,
-            nameEn: "Basic Pension", 
+            nameEn: "Basic Pension",
+            overview: data.service_overview ?? null,
+            eligibility: data.eligibility ?? null,
+            ministry: data.ministry ?? null,
+            department: data.department ?? null,
+            fee: data.fee ?? null,
+            legal_basis: data.legal_basis ?? null,
+            official_link: data.official_link ? data.official_link : (data.official_link_method ?? null),
+            online_apply_url: data.online_apply_url ?? null,
             steps: steps,
             document: documents
         }, {status: 200});

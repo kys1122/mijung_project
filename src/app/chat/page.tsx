@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History, ChevronRight } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -27,6 +27,7 @@ export default function ChatPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [hasContext, setHasContext] = useState<boolean | null>(null);
+  const [recommended, setRecommended] = useState<Array<{ name: string; agency?: string; eligibility?: string }>>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -40,11 +41,22 @@ export default function ChatPage() {
     if (savedContrast) setIsHighContrast(savedContrast);
     if (savedFont) setIsLargeFont(savedFont);
     // 본인 정보(/qa 결과) 없으면 선택 화면으로 자동 이동
-    if (!localStorage.getItem('analyze_result')) {
+    const raw = localStorage.getItem('analyze_result');
+    if (!raw) {
       router.replace('/qa?next=/chat');
       return;
     }
     setHasContext(true);
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.matched_services)) {
+        setRecommended(parsed.matched_services.map((s: any) => ({
+          name: s.service_name,
+          agency: s.agency ?? s.official_name,
+          eligibility: s.eligibility,
+        })));
+      }
+    } catch (e) { console.warn('analyze_result 파싱 실패:', e); }
   }, [router]);
   const handleLang = (v: LangCode) => { setLang(v); localStorage.setItem('app_lang', v); };
   const handleContrast = (v: boolean) => { setIsHighContrast(v); localStorage.setItem('app_contrast', String(v)); };
@@ -333,7 +345,38 @@ export default function ChatPage() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 flex flex-col gap-3 min-h-0">
-          {messages.length === 0 && hasContext && (
+          {messages.length === 0 && hasContext && recommended.length > 0 && (
+            <div className="mt-2 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <p className={`font-bold ${titleColor} ${sizeBubble}`}>
+                  {lang === 'en' ? 'Recommended for you' : '맞춤 추천 민원'}
+                </p>
+              </div>
+              <p className={`-mt-2 ${subtleColor} text-sm`}>
+                {lang === 'en' ? 'Pick one to see the steps, or ask anything below.' : '관심 있는 민원을 골라 자세히 보거나, 아래에서 추가 질문을 해보세요.'}
+              </p>
+              {recommended.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => router.push(`/list/procedure/${encodeURIComponent(s.name)}`)}
+                  className={`group rounded-2xl border shadow-sm hover:shadow-md transition-all p-4 text-left flex items-start gap-3 ${isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70'}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-semibold ${titleColor} ${sizeBubble}`}>{s.name}</p>
+                    {s.agency && <p className={`mt-0.5 text-xs ${subtleColor}`}>{s.agency}</p>}
+                    {s.eligibility && (
+                      <p className={`mt-1.5 text-sm leading-relaxed ${isHighContrast ? 'text-zinc-300' : 'text-slate-600'} line-clamp-2`}>
+                        {s.eligibility}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronRight className={`shrink-0 w-5 h-5 mt-1 ${subtleColor} group-hover:translate-x-0.5 transition-transform`} />
+                </button>
+              ))}
+            </div>
+          )}
+          {messages.length === 0 && hasContext && recommended.length === 0 && (
             <div className={`mt-8 flex flex-col items-center text-center ${subtleColor}`}>
               <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-blue-50'}`}>
                 <Sparkles className={`w-7 h-7 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
