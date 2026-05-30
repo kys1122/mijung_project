@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const signupScreen : React.FC = () => {
+const SignupScreen : React.FC = () => {
   const router = useRouter();
   const {register, formState:{errors}, watch } = useForm({mode: 'onChange'});
   
@@ -118,4 +118,4 @@ const signupScreen : React.FC = () => {
   );
 }
 
-export default signupScreen;
+export default SignupScreen;
