@@ -38,6 +38,7 @@ export async function POST(request: Request) {
             data: { accessToken, refreshToken }
         }, {status: 200});
     } catch (error) {
-        return NextResponse.json({ success: false, message: "로그인 처리 중 오류가 발생했습니다." });
+        console.error("Login Error:", error);
+        return NextResponse.json({ success: false, message: "로그인 처리 중 오류가 발생했습니다." }, { status: 500 });
     }
 };

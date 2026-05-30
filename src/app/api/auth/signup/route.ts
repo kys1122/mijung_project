@@ -16,7 +16,7 @@ export async function POST(request: Request) {
         // 이메일 중복 검사
         const checkSql = "SELECT id FROM users WHERE email = ?";
         const existingUser = await executeQuery(checkSql, [email]);
-        if (existingUser) {
+        if (existingUser.length > 0) {
             return NextResponse.json({ success: false, message: "이미 존재하는 이메일입니다." }, {status: 409});
         }
 
