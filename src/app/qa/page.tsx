@@ -94,8 +94,8 @@ export default function QaPage() {
   const mapCategory = (s: string): string => {
     if (!s) return '';
     const map: Record<string, string> = {
-      '민원': '민원서류', '복지': '복지', '주거': '주거', '의료': '의료', '일자리': '',
-      'Civil Service': '민원서류', Welfare: '복지', Housing: '주거', Medical: '의료', Jobs: '',
+      '민원': '민원서류', '복지': '복지', '주거': '주거', '의료': '의료', '일자리': '', '기타/모르겠음': '',
+      'Civil Service': '민원서류', Welfare: '복지', Housing: '주거', Medical: '의료', Jobs: '', 'Other/Not sure': '',
     };
     return s in map ? map[s] : s;
   };

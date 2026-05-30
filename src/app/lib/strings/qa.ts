@@ -12,7 +12,7 @@ export const STRINGS = {
     types: ['외국인', '노인 (65세 이상)', '저소득층', '해당없음'],
     options: {
       age: ['10대', '20대', '30대', '40대', '50대', '60대 이상'],
-      service: ['민원', '복지', '주거', '의료', '일자리'],
+      service: ['민원', '복지', '주거', '의료', '일자리', '기타/모르겠음'],
     },
     agePlaceholder: "연령을 선택해주세요",
     servicePlaceholder: "서비스를 선택해주세요",
@@ -39,7 +39,7 @@ export const STRINGS = {
     types: ['Foreigner', 'Senior', 'Low Income', 'N/A'],
     options: {
       age: ['10s', '20s', '30s', '40s', '50s', '60s or older'],
-      service: ['Civil Service', 'Welfare', 'Housing', 'Medical', 'Jobs'],
+      service: ['Civil Service', 'Welfare', 'Housing', 'Medical', 'Jobs', 'Other/Not sure'],
     },
     agePlaceholder: "Select Age",
     servicePlaceholder: "Select Service",
