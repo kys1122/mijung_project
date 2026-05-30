@@ -198,14 +198,30 @@ export default function ChatPage() {
     }
   };
 
-  // /classify → 후보 카드
+  // 트리 답변 → 챗봇 /analyze 호출 → 후보 카드
+  // 챗봇의 /analyze는 user_type/age_group/category/detail/lang/visa_type 인터페이스
+  // (chatbot/app.py:486). /classify(분류 5건 제한)보다 풍부한 RAG 매칭.
   const runClassify = async (finalAnswers: Record<string, string>, sid: number | null) => {
     setMessages(prev => [...prev, { kind: 'thinking', role: 'assistant' }]);
     try {
-      const res = await fetch('/api/qa/classify', {
+      // 트리 첫 답변(question_id=1)이 user_type, 나머지는 detail에 합쳐 챗봇이 매칭
+      const userType = finalAnswers['1'] ?? userTypeFromAnswers(finalAnswers);
+      const detail = Object.entries(finalAnswers)
+        .filter(([k]) => k !== '1')
+        .map(([, v]) => v)
+        .join(' ');
+      const payload = {
+        user_type: userType,
+        age_group: '',
+        category: '',
+        detail,
+        lang,
+        visa_type: visaFromAnswers(finalAnswers),
+      };
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: finalAnswers, session_id: sid }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       // 챗봇 응답 그대로 전달 (가공 X)
