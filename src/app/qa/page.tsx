@@ -7,6 +7,7 @@ import ChatFab from '../components/ChatFab';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as QA_STRINGS, type QaStrings } from '../lib/strings/qa';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { COMMON_VISAS, normalizeVisa } from '../lib/visa';
 
 export default function QaPage() {
   const router = useRouter();
@@ -15,7 +16,9 @@ export default function QaPage() {
   const [isHighContrast, setIsHighContrast] = useState(false);
   const [isLargeFont, setIsLargeFont] = useState(false);
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [selections, setSelections] = useState({ type: '', age: '', service: '', detail: '' });
+  const [selections, setSelections] = useState({ type: '', age: '', service: '', detail: '', visa_type: '' });
+  const [visaOtherText, setVisaOtherText] = useState('');
+  const [visaMode, setVisaMode] = useState<'select' | 'other'>('select');
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'age' | 'service' | null>(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -157,7 +160,7 @@ export default function QaPage() {
           category: mapCategory(selections.service),
           detail: selections.detail,
           lang,
-          visa_type: ''
+          visa_type: selections.visa_type ? normalizeVisa(selections.visa_type) : ''
         })
       });
       if (res.ok) {
@@ -223,6 +226,46 @@ export default function QaPage() {
               {t.btnVoice}
             </button>
           </section>
+
+          {/* 비자 종류 선택 카드 (외국인 전용) */}
+          {(selections.type === '외국인' || selections.type === 'Foreigner') && (
+            <section className={`w-full max-w-[380px] p-6 rounded-[15px] shadow-sm ${cardClass}`}>
+              <h2 className="text-[32px] font-bold mb-1 leading-none">1-1.</h2>
+              <p className="text-[20px] font-bold mb-4">{lang === 'ko' ? '비자 종류는?' : 'Visa type?'}</p>
+              <select
+                value={visaMode === 'other' ? 'OTHER' : selections.visa_type}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === 'OTHER') {
+                    setVisaMode('other');
+                    setSelections((p) => ({ ...p, visa_type: visaOtherText }));
+                  } else {
+                    setVisaMode('select');
+                    setSelections((p) => ({ ...p, visa_type: v }));
+                  }
+                }}
+                className={`w-full h-[52px] p-4 rounded-[10px] border outline-none ${fontSizeClass} ${inputClass} font-medium`}
+              >
+                {COMMON_VISAS.map((v) => (
+                  <option key={v.code || 'none'} value={v.code}>
+                    {lang === 'ko' ? v.label_ko : v.label_en}
+                  </option>
+                ))}
+              </select>
+              {visaMode === 'other' && (
+                <input
+                  type="text"
+                  value={visaOtherText}
+                  onChange={(e) => {
+                    setVisaOtherText(e.target.value);
+                    setSelections((p) => ({ ...p, visa_type: normalizeVisa(e.target.value) }));
+                  }}
+                  placeholder={lang === 'ko' ? '예: G-1, A-2' : 'e.g. G-1, A-2'}
+                  className={`mt-3 w-full h-[52px] p-4 rounded-[10px] border outline-none ${fontSizeClass} ${inputClass} font-medium`}
+                />
+              )}
+            </section>
+          )}
 
           {/* 연령 및 서비스 선택 카드 */}
           {[ {id:'age', q:t.q2, txt:t.q2_text, ph:t.agePlaceholder}, {id:'service', q:t.q3, txt:t.q3_text, ph:t.servicePlaceholder} ].map((item) => (
