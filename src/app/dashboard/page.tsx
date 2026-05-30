@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { apiFetch, getAccessToken } from "../../lib/api-client";
+import { apiFetch, getAccessToken } from "@/lib/api-client";
 
 type MyService = {
   id: number;

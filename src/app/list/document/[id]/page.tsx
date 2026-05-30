@@ -8,7 +8,7 @@ import TopSettings from "@/app/components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
-import { apiFetch, getAccessToken } from '../../../lib/api-client';
+import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();

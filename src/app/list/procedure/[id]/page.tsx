@@ -7,7 +7,7 @@ import TopSettings from "../../../components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
-import { apiFetch, getAccessToken } from '../../../lib/api-client';
+import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 const ProcedureScreen : React.FC = () => {
   const router = useRouter();
