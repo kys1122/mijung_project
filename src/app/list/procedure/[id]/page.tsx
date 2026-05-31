@@ -234,41 +234,43 @@ const ProcedureScreen: React.FC = () => {
           </h1>
         </div>
 
-        {/* 한눈에 보기 — 정부24식 정렬된 라벨 (사용자가 먼저 보고 판단) */}
+        {/* 한눈에 보기 — 문단+grid (사용자 요청으로 이전 형식 복원) */}
         {(info.overview || info.eligibility || info.ministry || info.fee) && (
           <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
-            <h2 className={`font-bold ${titleColor} ${sizeStepTitle} mb-1`}>
-              {lang === 'en' ? 'At a glance' : '한눈에 보기'}
-            </h2>
-            <div className="mt-3 divide-y divide-line-soft">
-              {info.overview && (
-                <div className="ui-meta-row">
-                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Summary' : '개요'}</span>
-                  <p className={`ui-meta-value whitespace-pre-line ${descColor}`}>{info.overview}</p>
-                </div>
-              )}
-              {info.eligibility && (
-                <div className="ui-meta-row">
-                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Eligibility' : '신청자격'}</span>
-                  <p className={`ui-meta-value whitespace-pre-line ${descColor}`}>{info.eligibility}</p>
-                </div>
-              )}
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
+                <Info className="w-4 h-4" />
+              </span>
+              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
+                {lang === 'en' ? 'Quick facts' : '한눈에 보기'}
+              </h2>
+            </div>
+            {info.overview && (
+              <p className={`leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
+                {info.overview}
+              </p>
+            )}
+            {info.eligibility && (
+              <div className="mt-3">
+                <p className={`font-semibold ${titleColor} ${sizeBody}`}>
+                  {lang === 'en' ? 'Who is eligible' : '신청 자격'}
+                </p>
+                <p className={`mt-1 leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
+                  {info.eligibility}
+                </p>
+              </div>
+            )}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(info.ministry || info.department) && (
-                <div className="ui-meta-row">
-                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Authority' : '소관부처'}</span>
-                  <p className={`ui-meta-value ${descColor} inline-flex items-center gap-1.5`}>
-                    <Building2 className="w-4 h-4 shrink-0 opacity-60" />
-                    {info.ministry || info.department}
-                  </p>
+                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{info.ministry || info.department}</span>
                 </div>
               )}
               {info.fee && (
-                <div className="ui-meta-row">
-                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Fee' : '수수료'}</span>
-                  <p className={`ui-meta-value ${descColor} inline-flex items-center gap-1.5`}>
-                    <Coins className="w-4 h-4 shrink-0 opacity-60" />
-                    {info.fee}
-                  </p>
+                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
+                  <Coins className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{info.fee}</span>
                 </div>
               )}
             </div>
