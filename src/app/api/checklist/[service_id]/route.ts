@@ -22,11 +22,13 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
         const userId = getUserIdFromRequest(request);
 
         // analyze 결과로부터 넘어온 service_name도 지원
+        // service_sources에 raw_* 데이터가 없는 서비스도 services 정보만으로 표시되도록 LEFT JOIN
         const serviceSQL = `
             SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps
             FROM services s
-            JOIN service_sources ss ON s.id = ss.service_id
-            WHERE s.id = ? OR s.service_name = ?`;
+            LEFT JOIN service_sources ss ON s.id = ss.service_id
+            WHERE s.id = ? OR s.service_name = ?
+            LIMIT 1`;
 
         const serviceRows = await executeQuery(serviceSQL, [service_id, service_id]);
 

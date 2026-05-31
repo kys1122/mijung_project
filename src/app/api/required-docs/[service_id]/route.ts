@@ -34,11 +34,13 @@ export async function GET(request : Request, {params} : {params: Promise<{ servi
         const userId = getUserIdFromRequest(request);
 
         // DB 조회 (주소창에 ID 숫자가 오든, 한글 service_name이 오든 둘 다 찾을 수 있게 수정)
+        // service_sources 없어도 services 정보로 표시되도록 LEFT JOIN
         const rows = `
-            SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps 
+            SELECT s.*, ss.raw_required_docs, ss.raw_eligibility, ss.raw_steps
             FROM services s
-            JOIN service_sources ss ON s.id = ss.service_id
-            WHERE s.id = ? OR s.service_name = ?`;
+            LEFT JOIN service_sources ss ON s.id = ss.service_id
+            WHERE s.id = ? OR s.service_name = ?
+            LIMIT 1`;
 
         const serviceRows = await executeQuery(rows, [service_id, service_id]);
 
