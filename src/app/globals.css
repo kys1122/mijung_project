@@ -23,4 +23,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* 노인·저시력 사용자 친화 — 본문 줄간격 넉넉히, 자간 약간 좁게 */
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iOS Safari에서 input 폰트 16px 이하면 자동 줌. 16px로 강제 */
+input, textarea, select {
+  font-size: max(16px, 1em);
 }
