@@ -117,7 +117,7 @@ const DashboardScreen: React.FC = () => {
             <p className="mt-4 text-base text-slate-700">아직 진행 중인 민원이 없어요</p>
             <p className="mt-1 text-sm text-slate-500">민원 목록에서 원하는 민원을 시작해보세요</p>
             <button
-              onClick={() => router.push('/list')}
+              onClick={() => router.push('/recommend')}
               className="mt-5 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
             >
               민원 찾아보기

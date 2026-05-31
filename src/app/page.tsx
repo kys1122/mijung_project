@@ -87,7 +87,7 @@ const MainScreen: React.FC = () => {
                   내 민원 이어서 진행하기
                 </button>
               </Link>
-              <Link href="/list" className="block">
+              <Link href="/recommend" className="block">
                 <button className="w-full py-3.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors rounded-xl text-slate-700 font-semibold text-base flex items-center justify-center gap-2">
                   <Search className="w-5 h-5" />
                   민원 둘러보기
