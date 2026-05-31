@@ -67,7 +67,6 @@ const ProcedureScreen: React.FC = () => {
           fee: data.fee ?? null,
           official_link: data.official_link ?? null,
         });
-        // 챗봇 LLM 민원 안내 자동 호출 (캐시되어 두 번째부터는 즉시)
         if (data.name) {
           setLlmDetailLoading(true);
           try {
@@ -144,7 +143,7 @@ const ProcedureScreen: React.FC = () => {
       await audio.play();
     } catch (e) {
       console.error('TTS 실패:', e);
-      alert('음성 재생에 실패했습니다.');
+      alert(lang === 'en' ? "Couldn't play audio. Try again in a moment." : '음성 재생에 실패했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       setTtsLoadingId(null);
     }
@@ -152,27 +151,28 @@ const ProcedureScreen: React.FC = () => {
 
   const t = useTranslations<ProcedureStrings>('procedure', PROC_STRINGS as unknown as { ko: ProcedureStrings; en: ProcedureStrings }, lang);
 
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
-  const cardDone = isHighContrast ? 'bg-zinc-900 border-yellow-300' : 'bg-emerald-50 border-emerald-200';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
-  const progressBg = isHighContrast ? 'bg-zinc-700' : 'bg-slate-200';
-  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-blue-600';
+  // 고대비 모드 — 토큰을 덮어쓸 인라인 클래스
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card';
+  const cardDoneCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-300' : 'rounded-2xl bg-success/5 border border-emerald-200 ' + 'shadow-[0_2px_8px_rgba(15,23,42,0.05)]';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-ink-2';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const metaColor = isHighContrast ? 'text-zinc-400' : 'text-ink-4';
+  const progressBg = isHighContrast ? 'bg-zinc-700' : 'bg-line-soft';
+  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-brand-600';
   const ttsBtn = isHighContrast
     ? 'bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700'
-    : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200';
+    : 'bg-surface-muted border border-line-base text-ink-2 hover:bg-line-soft';
   const linkBtn = isHighContrast
     ? 'bg-yellow-400 text-black hover:bg-yellow-300'
-    : 'bg-blue-600 text-white hover:bg-blue-700';
+    : 'bg-brand-600 text-white hover:bg-brand-700 shadow-[0_4px_12px_rgba(37,99,235,0.18)]';
   const docsBtn = isHighContrast
     ? 'bg-zinc-900 border-yellow-400 text-yellow-400 hover:bg-zinc-800'
-    : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50';
+    : 'bg-brand-50 border border-brand-100 text-brand-700 hover:bg-brand-100/60';
   const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
-  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
+  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-surface border-line-strong';
 
-  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeBody = isLargeFont ? 'text-base sm:text-lg' : 'text-sm sm:text-base';
   const sizeStepTitle = isLargeFont ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl';
   const sizeBtn = isLargeFont ? 'text-lg' : 'text-base';
@@ -181,7 +181,7 @@ const ProcedureScreen: React.FC = () => {
     return (
       <div className={`min-h-screen flex items-center justify-center ${pageBg}`}>
         <div className="flex flex-col items-center gap-3">
-          <div className={`w-8 h-8 border-3 ${progressBg} border-t-blue-500 rounded-full animate-spin`}></div>
+          <div className={`w-8 h-8 border-[3px] ${progressBg} border-t-brand-500 rounded-full animate-spin`} />
           <p className={subtleColor}>{t.loading}</p>
         </div>
       </div>
@@ -191,13 +191,13 @@ const ProcedureScreen: React.FC = () => {
   return (
     <div className={`min-h-screen ${pageBg}`}>
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
-        <header className="flex items-center justify-between gap-2">
+        <header className="pt-2 flex items-center justify-between gap-2 ui-enter">
           <button
             onClick={() => router.back()}
-            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
+            className={`inline-flex items-center gap-1 -ml-2 px-3 py-2 rounded-xl transition-colors hover:bg-black/5 ${titleColor}`}
           >
-            <ChevronLeft className="w-6 h-6" />
-            <span className={sizeBody}>{t.back}</span>
+            <ChevronLeft className="w-5 h-5" />
+            <span className={`font-medium ${sizeBody}`}>{t.back}</span>
           </button>
           <TopSettings
             lang={lang} setLang={handleLang}
@@ -206,22 +206,31 @@ const ProcedureScreen: React.FC = () => {
           />
         </header>
 
-        <h1 className={`mt-4 font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
-          {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
-        </h1>
+        <div className="mt-5 ui-enter">
+          {(info.ministry || info.department) && (
+            <p className={`ui-section-label ${metaColor}`}>
+              {info.ministry || info.department}
+            </p>
+          )}
+          <h1 className={`mt-2 ui-page-title ${titleColor}`}>
+            {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
+          </h1>
+        </div>
 
-        {/* LLM 자세한 안내 (chat의 service_detail과 동일) */}
+        {/* 자세한 안내 */}
         {(llmDetail || llmDetailLoading) && (
-          <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
             <div className="flex items-center gap-2 mb-3">
-              <Info className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
+                <Info className="w-4 h-4" />
+              </span>
               <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
                 {lang === 'en' ? 'Detailed guide' : '민원 자세히 보기'}
               </h2>
             </div>
             {llmDetailLoading && !llmDetail ? (
               <div className="flex items-center gap-2">
-                <div className={`w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin`}></div>
+                <div className="w-5 h-5 border-2 border-line-base border-t-brand-500 rounded-full animate-spin" />
                 <span className={subtleColor}>{lang === 'en' ? 'Loading detailed guide...' : '자세한 안내를 불러오는 중...'}</span>
               </div>
             ) : (
@@ -230,40 +239,41 @@ const ProcedureScreen: React.FC = () => {
           </div>
         )}
 
+        {/* 한눈에 보기 — 정부24식 정렬된 라벨 */}
         {(info.overview || info.eligibility || info.ministry || info.fee) && (
-          <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <Info className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
-              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
-                {lang === 'en' ? 'Quick facts' : '한눈에 보기'}
-              </h2>
-            </div>
-            {info.overview && (
-              <p className={`leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
-                {info.overview}
-              </p>
-            )}
-            {info.eligibility && (
-              <div className="mt-3">
-                <p className={`font-semibold ${titleColor} ${sizeBody}`}>
-                  {lang === 'en' ? 'Who is eligible' : '신청 자격'}
-                </p>
-                <p className={`mt-1 leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
-                  {info.eligibility}
-                </p>
-              </div>
-            )}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className={`mt-4 p-5 sm:p-6 ${cardCls} ui-enter`}>
+            <h2 className={`font-bold ${titleColor} ${sizeStepTitle} mb-1`}>
+              {lang === 'en' ? 'At a glance' : '한눈에 보기'}
+            </h2>
+            <div className="mt-3 divide-y divide-line-soft">
+              {info.overview && (
+                <div className="ui-meta-row">
+                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Summary' : '개요'}</span>
+                  <p className={`ui-meta-value whitespace-pre-line ${descColor}`}>{info.overview}</p>
+                </div>
+              )}
+              {info.eligibility && (
+                <div className="ui-meta-row">
+                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Eligibility' : '신청자격'}</span>
+                  <p className={`ui-meta-value whitespace-pre-line ${descColor}`}>{info.eligibility}</p>
+                </div>
+              )}
               {(info.ministry || info.department) && (
-                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
-                  <Building2 className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{info.ministry || info.department}</span>
+                <div className="ui-meta-row">
+                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Authority' : '소관부처'}</span>
+                  <p className={`ui-meta-value ${descColor} inline-flex items-center gap-1.5`}>
+                    <Building2 className="w-4 h-4 shrink-0 opacity-60" />
+                    {info.ministry || info.department}
+                  </p>
                 </div>
               )}
               {info.fee && (
-                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
-                  <Coins className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{info.fee}</span>
+                <div className="ui-meta-row">
+                  <span className={`ui-meta-label ${metaColor}`}>{lang === 'en' ? 'Fee' : '수수료'}</span>
+                  <p className={`ui-meta-value ${descColor} inline-flex items-center gap-1.5`}>
+                    <Coins className="w-4 h-4 shrink-0 opacity-60" />
+                    {info.fee}
+                  </p>
                 </div>
               )}
             </div>
@@ -273,34 +283,36 @@ const ProcedureScreen: React.FC = () => {
               return (
                 <button
                   onClick={() => window.open(officialUrl, '_blank', 'noopener,noreferrer')}
-                  className={`mt-4 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+                  className={`mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
                 >
                   <ScrollText className="w-4 h-4" />
-                  {lang === 'en' ? 'Official page' : '공식 안내'}
+                  {lang === 'en' ? 'Official page' : '공식 안내 페이지'}
+                  <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                 </button>
               );
             })()}
           </div>
         )}
 
-        <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
+        {/* 진행률 + 준비물 CTA */}
+        <div className={`mt-4 p-5 ${cardCls} ui-enter`}>
           <div className="flex items-center justify-between">
-            <span className={`font-semibold ${titleColor} ${sizeBody}`}>{t.progress}</span>
-            <span className={`font-medium ${subtleColor} ${sizeBody}`}>
-              {completedCount}/{step.length}
+            <span className={`font-bold ${titleColor} ${sizeBody}`}>{t.progress}</span>
+            <span className={`font-semibold tabular-nums ${metaColor} ${sizeBody}`}>
+              {completedCount}<span className={`mx-0.5 ${metaColor}`}>/</span>{step.length}
             </span>
           </div>
           <div className={`mt-3 w-full h-2.5 rounded-full overflow-hidden ${progressBg}`}>
             <div
-              className={`h-full rounded-full transition-all duration-300 ${progressFill}`}
+              className={`h-full rounded-full transition-all duration-500 ${progressFill}`}
               style={{ width: `${progress}%` }}
             />
           </div>
           <button
             onClick={() => router.push(`/list/document/${id}`)}
-            className={`mt-4 w-full inline-flex items-center justify-between gap-2 px-4 py-3 rounded-xl border-2 font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+            className={`mt-4 w-full inline-flex items-center justify-between gap-2 px-4 py-3.5 rounded-2xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
           >
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-2">
               <FileText className="w-4 h-4" />
               {t.docs}
             </span>
@@ -308,31 +320,34 @@ const ProcedureScreen: React.FC = () => {
           </button>
         </div>
 
+        {/* 체크리스트 단계 */}
         <div className="mt-6 flex flex-col gap-4">
-          {step.map((s: any) => (
+          {step.map((s: any, idx: number) => (
             <div
               key={s.id}
-              className={`relative rounded-2xl border shadow-sm transition-all ${s.isCompleted ? cardDone : cardBg}`}
+              className={`relative ${s.isCompleted ? cardDoneCls : cardCls} transition-all`}
             >
-              <div className={`absolute -top-3 -left-2 w-10 h-10 flex items-center justify-center rounded-full font-bold shadow-sm ${
+              <div className={`absolute -top-3 -left-2 w-10 h-10 flex items-center justify-center rounded-2xl font-bold ${
                 s.isCompleted
                   ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-emerald-500 text-white')
-                  : (isHighContrast ? 'bg-zinc-800 text-yellow-400 border border-yellow-400' : 'bg-blue-600 text-white')
-              }`}>
-                {s.id}
+                  : (isHighContrast ? 'bg-zinc-800 text-yellow-400 border border-yellow-400' : 'bg-brand-600 text-white')
+              } shadow-[0_4px_12px_rgba(37,99,235,0.18)]`}>
+                {idx + 1}
               </div>
-              <div className="p-5 pt-6">
-                <h2 className={`mb-2 font-bold ${titleColor} ${sizeStepTitle}`}>{s.title}</h2>
-                <p className={`leading-relaxed ${descColor} ${sizeBody}`}>{s.description}</p>
+              <div className="p-5 pt-7">
+                <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>{s.title}</h2>
+                {s.description && (
+                  <p className={`mt-1.5 leading-relaxed ${descColor} ${sizeBody}`}>{s.description}</p>
+                )}
 
-                <div className="mt-5 flex flex-col gap-2">
+                <div className="mt-5 flex flex-col sm:flex-row gap-2">
                   {s.link && (
                     <button
                       onClick={() => {
                         const url = s.link.startsWith('http') ? s.link : `https://${s.link}`;
                         window.open(url, '_blank', 'noopener,noreferrer');
                       }}
-                      className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${linkBtn} ${sizeBtn}`}
+                      className={`flex-1 py-3 rounded-2xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${linkBtn} ${sizeBtn}`}
                     >
                       <ExternalLink className="w-4 h-4" />
                       {t.web}
@@ -341,7 +356,7 @@ const ProcedureScreen: React.FC = () => {
                   <button
                     onClick={() => handleSpeak(s)}
                     disabled={ttsLoadingId === s.id}
-                    className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${ttsBtn} ${sizeBtn}`}
+                    className={`flex-1 py-3 rounded-2xl font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${ttsBtn} ${sizeBtn}`}
                   >
                     <Volume2 className="w-4 h-4" />
                     {ttsLoadingId === s.id ? t.voicePlaying : t.voice}
@@ -350,9 +365,9 @@ const ProcedureScreen: React.FC = () => {
 
                 <button
                   onClick={() => Complete(s.id)}
-                  className="mt-5 flex items-center gap-2"
+                  className="mt-5 flex items-center gap-2.5 group"
                 >
-                  <span className={`w-7 h-7 flex items-center justify-center rounded-md border-2 transition-colors ${s.isCompleted ? checkboxOn : checkboxOff}`}>
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-lg border-2 transition-all ${s.isCompleted ? checkboxOn : checkboxOff} group-hover:scale-105`}>
                     {s.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
                   </span>
                   <span className={`font-semibold ${titleColor} ${sizeBody}`}>{t.done}</span>
