@@ -204,25 +204,25 @@ export default function QaPage() {
   };
 
   // --- 디자인 토큰 ---
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
-  const inputBg = isHighContrast ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const inputBg = isHighContrast ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-surface border-line-base text-ink-1';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
-    : 'bg-blue-600 hover:bg-blue-700 text-white';
+    : 'bg-brand-600 hover:bg-brand-700 text-white shadow-[0_4px_12px_rgba(37,99,235,0.22)]';
   const secondaryBtn = isHighContrast
     ? 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white'
-    : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700';
+    : 'bg-surface border border-line-base hover:bg-surface-muted text-ink-2';
   const optionBase = isHighContrast
     ? 'border-zinc-700 hover:bg-zinc-800'
-    : 'border-slate-200 hover:bg-slate-50';
+    : 'border-line-soft hover:bg-brand-50';
   const optionActive = isHighContrast
     ? 'border-yellow-400 bg-zinc-800'
-    : 'border-blue-500 bg-blue-50';
-  const progressBg = isHighContrast ? 'bg-zinc-800' : 'bg-slate-200';
-  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-blue-600';
+    : 'border-brand-500 bg-brand-50';
+  const progressBg = isHighContrast ? 'bg-zinc-800' : 'bg-line-soft';
+  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-brand-600';
 
   const sizeStepTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeBody = isLargeFont ? 'text-lg' : 'text-base';
@@ -295,7 +295,7 @@ export default function QaPage() {
           </div>
         )}
 
-        <main className={`mt-6 flex-1 rounded-2xl border shadow-sm p-6 sm:p-8 ${cardBg}`}>
+        <main className={`mt-6 flex-1 rounded-2xl border shadow-sm p-6 sm:p-8 ${cardCls}`}>
           {currentQ ? (
             <>
               <h1 className={`font-bold tracking-tight ${titleColor} ${sizeStepTitle}`}>
