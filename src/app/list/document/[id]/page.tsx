@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Check, ChevronLeft, FileText } from "lucide-react";
+import { Building2, Check, ChevronLeft, FileText, MessageCircle, Sparkles } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import DetailModal from "./detailModal";
@@ -130,27 +130,50 @@ const DocumentScreen: React.FC = () => {
           {pageTitle || t.docsFallback}
         </h1>
 
-        <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
-          <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
-            {t.need} <span className={subtleColor}>({completedCount}/{doc.length})</span>
-          </h2>
-          <ul className="mt-3 flex flex-col gap-2">
-            {doc.map((d) => (
-              <li key={d.id} className="flex items-center gap-2">
-                <span className={`w-5 h-5 shrink-0 flex items-center justify-center rounded-full border-2 ${d.isCompleted ? checkboxOn : checkboxOff}`}>
-                  {d.isCompleted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-                </span>
-                <span className={`${sizeBody} ${
-                  d.isCompleted
-                    ? (isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through')
-                    : titleColor
-                }`}>
-                  {d.title}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {doc.length === 0 ? (
+          <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
+            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-white'}`}>
+              <Sparkles className={`w-6 h-6 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+            </div>
+            <p className={`mt-4 font-semibold ${titleColor} ${sizeDocTitle}`}>
+              {lang === 'en' ? 'Documents not listed yet' : '준비물 정보가 정리되어 있지 않아요'}
+            </p>
+            <p className={`mt-2 ${subtleColor} ${sizeBody}`}>
+              {lang === 'en'
+                ? 'Ask the chatbot for a complete checklist for this service.'
+                : '챗봇에서 이 민원의 자세한 안내와 체크리스트를 받아보실 수 있어요.'}
+            </p>
+            <button
+              onClick={() => router.push(`/chat`)}
+              className={`mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold transition-colors ${readBtn} ${sizeBtn}`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {lang === 'en' ? 'Ask the chatbot' : '챗봇에서 자세히 보기'}
+            </button>
+          </div>
+        ) : (
+          <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
+            <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
+              {t.need} <span className={subtleColor}>({completedCount}/{doc.length})</span>
+            </h2>
+            <ul className="mt-3 flex flex-col gap-2">
+              {doc.map((d) => (
+                <li key={d.id} className="flex items-center gap-2">
+                  <span className={`w-5 h-5 shrink-0 flex items-center justify-center rounded-full border-2 ${d.isCompleted ? checkboxOn : checkboxOff}`}>
+                    {d.isCompleted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                  </span>
+                  <span className={`${sizeBody} ${
+                    d.isCompleted
+                      ? (isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through')
+                      : titleColor
+                  }`}>
+                    {d.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-6 flex flex-col gap-4">
           {doc.map((d) => (
