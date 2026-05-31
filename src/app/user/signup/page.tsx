@@ -51,7 +51,7 @@ const SignupScreen: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-16 pb-12">
       <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">회원가입</h1>
-        <p className="mt-1.5 text-sm text-slate-500">계정을 만들고 민원 진행을 저장하세요</p>
+        <p className="mt-1.5 text-sm text-slate-600">계정을 만들고 민원 진행을 저장하세요</p>
 
         <div className="mt-8 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-6">
           <div className="flex flex-col gap-4">
@@ -94,7 +94,7 @@ const SignupScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-600 transition-colors"
                 >
                   {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -116,7 +116,7 @@ const SignupScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowChkPw(!showChkPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-600 transition-colors"
                 >
                   {showChkPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -136,7 +136,7 @@ const SignupScreen: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !isValid}
-            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors rounded-xl text-white font-semibold text-base"
+            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors rounded-xl text-white font-semibold text-base"
           >
             {loading ? '가입 처리 중...' : '가입하기'}
           </button>

@@ -152,7 +152,7 @@ const RecommendScreen: React.FC = () => {
   const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
   const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
   const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
   const summaryBox = isHighContrast
     ? 'bg-zinc-900 border-yellow-400 text-white'
@@ -237,7 +237,7 @@ const RecommendScreen: React.FC = () => {
               </div>
               <button
                 onClick={clearSearch}
-                className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-600 hover:text-slate-800'}`}
               >
                 {lang === 'en' ? 'Clear' : '지우기'}
               </button>
@@ -332,7 +332,7 @@ const RecommendScreen: React.FC = () => {
           </div>
 
           {allLoading ? (
-            <div className="mt-8 flex flex-col items-center gap-3 text-slate-400">
+            <div className="mt-8 flex flex-col items-center gap-3 text-slate-500">
               <div className="w-7 h-7 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
               <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
             </div>

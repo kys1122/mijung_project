@@ -49,7 +49,7 @@ const MainScreen: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-base font-semibold text-slate-900 truncate">{user.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user.email}</p>
+              <p className="text-xs text-slate-600 truncate">{user.email}</p>
             </div>
             <button
               onClick={handleLogout}
@@ -73,7 +73,7 @@ const MainScreen: React.FC = () => {
           <h1 className="mt-6 text-2xl font-bold text-slate-900 tracking-tight">
             민원, 쉽게 안내해드려요
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-600">
             외국인 · 노인 · 저소득층을 위한 민원 가이드
           </p>
         </div>

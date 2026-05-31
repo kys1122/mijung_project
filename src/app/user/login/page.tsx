@@ -49,7 +49,7 @@ const LoginScreen: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center px-5 sm:px-8 pt-12 sm:pt-20 pb-12">
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">로그인</h1>
-        <p className="mt-1.5 text-sm text-slate-500">민원 진행 상황을 이어서 확인하세요</p>
+        <p className="mt-1.5 text-sm text-slate-600">민원 진행 상황을 이어서 확인하세요</p>
 
         <div className="mt-8 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-6">
           <div className="flex flex-col gap-4">
@@ -80,7 +80,7 @@ const LoginScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-600 transition-colors"
                   aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 표시"}
                 >
                   {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -109,7 +109,7 @@ const LoginScreen: React.FC = () => {
           <button
             onClick={handleLogin}
             disabled={loading || !email || !password}
-            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors rounded-xl text-white font-semibold text-base"
+            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors rounded-xl text-white font-semibold text-base"
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>
@@ -126,13 +126,13 @@ const LoginScreen: React.FC = () => {
 
         <div className="mt-8 flex items-center gap-3">
           <div className="flex-grow h-px bg-slate-200" />
-          <span className="text-xs text-slate-400">또는</span>
+          <span className="text-xs text-slate-500">또는</span>
           <div className="flex-grow h-px bg-slate-200" />
         </div>
 
         <Link
           href="/qa"
-          className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-700 underline underline-offset-4 transition-colors"
+          className="mt-6 block text-center text-sm text-slate-600 hover:text-slate-700 underline underline-offset-4 transition-colors"
         >
           비회원으로 계속하기
         </Link>

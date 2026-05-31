@@ -156,7 +156,7 @@ const ProcedureScreen: React.FC = () => {
   const cardDone = isHighContrast ? 'bg-zinc-900 border-yellow-300' : 'bg-emerald-50 border-emerald-200';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
   const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
   const progressBg = isHighContrast ? 'bg-zinc-700' : 'bg-slate-200';
   const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-blue-600';
   const ttsBtn = isHighContrast

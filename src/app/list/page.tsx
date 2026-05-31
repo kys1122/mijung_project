@@ -86,7 +86,7 @@ const ListScreen: React.FC = () => {
   const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
   const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
   const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
@@ -125,7 +125,7 @@ const ListScreen: React.FC = () => {
         </button>
 
         {loading ? (
-          <div className="mt-12 flex flex-col items-center gap-3 text-slate-400">
+          <div className="mt-12 flex flex-col items-center gap-3 text-slate-500">
             <div className="w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
             <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
           </div>
@@ -176,7 +176,7 @@ const ListScreen: React.FC = () => {
                 </div>
                 <button
                   onClick={(e) => handleDelete(s.id, e)}
-                  className={`shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
+                  className={`shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-slate-500 hover:text-red-500 hover:bg-red-50'}`}
                   aria-label="delete"
                 >
                   <Trash2 className="w-4 h-4" />

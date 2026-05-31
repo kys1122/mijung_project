@@ -205,7 +205,7 @@ export default function QaPage() {
   const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
   const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
   const inputBg = isHighContrast ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'

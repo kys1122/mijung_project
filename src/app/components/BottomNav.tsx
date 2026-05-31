@@ -34,7 +34,7 @@ export default function BottomNav() {
   const navBg = isHighContrast
     ? 'bg-black/95 border-zinc-700'
     : 'bg-white/95 border-slate-200/70';
-  const inactive = isHighContrast ? 'text-zinc-500' : 'text-slate-400';
+  const inactive = isHighContrast ? 'text-zinc-500' : 'text-slate-500';
   const active = isHighContrast ? 'text-yellow-400' : 'text-blue-600';
 
   return (

@@ -91,7 +91,7 @@ function ChecklistRenderer({
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
   const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
   const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
-  const doneColor = isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through';
+  const doneColor = isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-500 line-through';
   const accent = isHighContrast ? 'text-yellow-400' : 'text-blue-600';
   const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
 
@@ -600,7 +600,7 @@ export default function ChatPage() {
   const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
   const headerBorder = isHighContrast ? 'border-zinc-700' : 'border-slate-200/70';
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-500';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
   const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
   const inputBg = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
   const userBubble = isHighContrast ? 'bg-yellow-400 text-black' : 'bg-blue-600 text-white';

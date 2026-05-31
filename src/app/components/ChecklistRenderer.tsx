@@ -36,7 +36,7 @@ export default function ChecklistRenderer({
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
   const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
   const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
-  const doneColor = isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through';
+  const doneColor = isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-500 line-through';
   const accent = isHighContrast ? 'text-yellow-400' : 'text-blue-600';
   const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
 

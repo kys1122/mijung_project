@@ -82,23 +82,23 @@ const DashboardScreen: React.FC = () => {
           >
             <ChevronLeft className="w-6 h-6 text-slate-700" />
           </button>
-          <span className="text-sm text-slate-500">뒤로</span>
+          <span className="text-sm text-slate-600">뒤로</span>
         </header>
 
         <div className="mt-6">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">내 민원</h1>
-          <p className="mt-1 text-sm text-slate-500">진행 중인 민원을 이어서 확인하세요</p>
+          <p className="mt-1 text-sm text-slate-600">진행 중인 민원을 이어서 확인하세요</p>
         </div>
 
         {loading ? (
-          <div className="mt-12 flex flex-col items-center gap-3 text-slate-400">
+          <div className="mt-12 flex flex-col items-center gap-3 text-slate-500">
             <div className="w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
             <p className="text-sm">불러오는 중...</p>
           </div>
         ) : unauthorized ? (
           <div className="mt-16 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-8 text-center">
             <p className="text-base text-slate-700">로그인이 필요합니다</p>
-            <p className="mt-1 text-sm text-slate-400">진행 중인 민원을 보려면 먼저 로그인해주세요</p>
+            <p className="mt-1 text-sm text-slate-500">진행 중인 민원을 보려면 먼저 로그인해주세요</p>
             <button
               onClick={() => router.push('/user/login')}
               className="mt-5 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
@@ -109,10 +109,10 @@ const DashboardScreen: React.FC = () => {
         ) : services.length === 0 ? (
           <div className="mt-16 rounded-2xl bg-white border border-slate-200/70 shadow-sm p-8 text-center">
             <div className="mx-auto w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
-              <FilePlus2 className="w-7 h-7 text-slate-400" />
+              <FilePlus2 className="w-7 h-7 text-slate-500" />
             </div>
             <p className="mt-4 text-base text-slate-700">아직 진행 중인 민원이 없어요</p>
-            <p className="mt-1 text-sm text-slate-400">민원 목록에서 원하는 민원을 시작해보세요</p>
+            <p className="mt-1 text-sm text-slate-500">민원 목록에서 원하는 민원을 시작해보세요</p>
             <button
               onClick={() => router.push('/list')}
               className="mt-5 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
@@ -139,11 +139,11 @@ const DashboardScreen: React.FC = () => {
                         <span>{meta.label}</span>
                       </div>
                       <h2 className="mt-3 text-lg font-semibold text-slate-900 truncate">{svc.name}</h2>
-                      {subtitle && <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>}
+                      {subtitle && <p className="mt-0.5 text-xs text-slate-600 truncate">{subtitle}</p>}
                       {svc.eligibility && (
                         <p className="mt-2 text-sm text-slate-600 line-clamp-2 leading-relaxed">{svc.eligibility}</p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                         {(svc.ministry || svc.department) && (
                           <span className="inline-flex items-center gap-1">
                             <Building2 className="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ const DashboardScreen: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                         <span>{timeAgo(svc.updated_at)}</span>
                         {svc.completed_count > 0 && (
                           <>
@@ -167,7 +167,7 @@ const DashboardScreen: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="shrink-0 w-5 h-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="shrink-0 w-5 h-5 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </button>
               );
