@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, FileText, ClipboardCheck, CheckCircle2, FilePlus2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, ClipboardCheck, CheckCircle2, FilePlus2, Building2, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { apiFetch, getAccessToken } from "@/lib/api-client";
@@ -11,6 +11,11 @@ type Step = 'description' | 'required_docs' | 'checklist' | 'submitted';
 type MyService = {
   id: number;
   name: string;
+  official_name?: string | null;
+  ministry?: string | null;
+  department?: string | null;
+  fee?: string | null;
+  eligibility?: string | null;
   last_step: Step;
   completed_count: number;
   started_at: string;
@@ -120,6 +125,7 @@ const DashboardScreen: React.FC = () => {
             {services.map((svc) => {
               const meta = STEP_META[svc.last_step];
               const Icon = meta.Icon;
+              const subtitle = svc.official_name && svc.official_name !== svc.name ? svc.official_name : null;
               return (
                 <button
                   key={svc.id}
@@ -133,7 +139,25 @@ const DashboardScreen: React.FC = () => {
                         <span>{meta.label}</span>
                       </div>
                       <h2 className="mt-3 text-lg font-semibold text-slate-900 truncate">{svc.name}</h2>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                      {subtitle && <p className="mt-0.5 text-xs text-slate-500 truncate">{subtitle}</p>}
+                      {svc.eligibility && (
+                        <p className="mt-2 text-sm text-slate-600 line-clamp-2 leading-relaxed">{svc.eligibility}</p>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                        {(svc.ministry || svc.department) && (
+                          <span className="inline-flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5" />
+                            {svc.ministry || svc.department}
+                          </span>
+                        )}
+                        {svc.fee && (
+                          <span className="inline-flex items-center gap-1">
+                            <Coins className="w-3.5 h-3.5" />
+                            {svc.fee}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                         <span>{timeAgo(svc.updated_at)}</span>
                         {svc.completed_count > 0 && (
                           <>

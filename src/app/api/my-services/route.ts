@@ -18,6 +18,11 @@ export async function GET(request: Request) {
       `SELECT
          s.id,
          s.service_name AS name,
+         s.official_name,
+         s.ministry,
+         s.department,
+         s.fee,
+         s.eligibility,
          msp.last_step,
          msp.started_at,
          msp.updated_at,
@@ -33,6 +38,11 @@ export async function GET(request: Request) {
     const services = rows.map((r: any) => ({
       id: r.id,
       name: r.name,
+      official_name: r.official_name,
+      ministry: r.ministry,
+      department: r.department,
+      fee: r.fee,
+      eligibility: r.eligibility,
       last_step: r.last_step,
       completed_count: Number(r.completed_count),
       started_at: r.started_at,

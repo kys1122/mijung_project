@@ -18,6 +18,8 @@ const DocumentScreen: React.FC = () => {
 
   const [doc, setDoc] = useState<any[]>([]);
   const [pageTitle, setPageTitle] = useState<string>("");
+  const [llmChecklist, setLlmChecklist] = useState<string>("");
+  const [llmLoading, setLlmLoading] = useState(false);
 
   useEffect(() => {
     const fetchRequiredDocs = async () => {
@@ -25,8 +27,26 @@ const DocumentScreen: React.FC = () => {
       try {
         const res = await apiFetch(`/api/required-docs/${id}`);
         const data = await res.json();
-        setDoc(data.document || []);
+        const docs = data.document || [];
+        setDoc(docs);
         setPageTitle(data.title || "");
+
+        // mijung 자체 파싱이 빈 결과면 챗봇 LLM 체크리스트로 폴백
+        if (docs.length === 0 && data.title) {
+          setLlmLoading(true);
+          try {
+            const cl = await apiFetch('/api/llm-checklist', {
+              method: 'POST',
+              body: JSON.stringify({ service_name: data.title, lang: 'ko', user_type: '' }),
+            });
+            const cdata = await cl.json();
+            if (cdata?.checklist) setLlmChecklist(cdata.checklist);
+          } catch (e) {
+            console.error('LLM 체크리스트 폴백 실패:', e);
+          } finally {
+            setLlmLoading(false);
+          }
+        }
       } catch (error) {
         console.error("백엔드 데이터 호출 실패:", error);
         setDoc([]);
@@ -131,26 +151,54 @@ const DocumentScreen: React.FC = () => {
         </h1>
 
         {doc.length === 0 ? (
-          <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
-            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-white'}`}>
-              <Sparkles className={`w-6 h-6 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+          llmLoading ? (
+            <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
+              <div className={`mx-auto w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin`}></div>
+              <p className={`mt-3 ${subtleColor} ${sizeBody}`}>
+                {lang === 'en' ? 'Preparing the checklist...' : '체크리스트를 준비하고 있어요...'}
+              </p>
             </div>
-            <p className={`mt-4 font-semibold ${titleColor} ${sizeDocTitle}`}>
-              {lang === 'en' ? 'Documents not listed yet' : '준비물 정보가 정리되어 있지 않아요'}
-            </p>
-            <p className={`mt-2 ${subtleColor} ${sizeBody}`}>
-              {lang === 'en'
-                ? 'Ask the chatbot for a complete checklist for this service.'
-                : '챗봇에서 이 민원의 자세한 안내와 체크리스트를 받아보실 수 있어요.'}
-            </p>
-            <button
-              onClick={() => router.push(`/chat`)}
-              className={`mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold transition-colors ${readBtn} ${sizeBtn}`}
-            >
-              <MessageCircle className="w-4 h-4" />
-              {lang === 'en' ? 'Ask the chatbot' : '챗봇에서 자세히 보기'}
-            </button>
-          </div>
+          ) : llmChecklist ? (
+            <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
+                  {lang === 'en' ? 'Suggested checklist' : 'AI 추천 체크리스트'}
+                </h2>
+              </div>
+              <pre className={`whitespace-pre-wrap font-sans leading-relaxed ${sizeBody} ${descColor}`}>
+                {llmChecklist}
+              </pre>
+              <button
+                onClick={() => router.push(`/chat`)}
+                className={`mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold transition-colors ${readBtn} ${sizeBody}`}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {lang === 'en' ? 'More in chatbot' : '챗봇에서 더 보기'}
+              </button>
+            </div>
+          ) : (
+            <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
+              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-white'}`}>
+                <Sparkles className={`w-6 h-6 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              </div>
+              <p className={`mt-4 font-semibold ${titleColor} ${sizeDocTitle}`}>
+                {lang === 'en' ? 'Documents not listed yet' : '준비물 정보가 정리되어 있지 않아요'}
+              </p>
+              <p className={`mt-2 ${subtleColor} ${sizeBody}`}>
+                {lang === 'en'
+                  ? 'Ask the chatbot for a complete checklist for this service.'
+                  : '챗봇에서 이 민원의 자세한 안내와 체크리스트를 받아보실 수 있어요.'}
+              </p>
+              <button
+                onClick={() => router.push(`/chat`)}
+                className={`mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold transition-colors ${readBtn} ${sizeBtn}`}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {lang === 'en' ? 'Ask the chatbot' : '챗봇에서 자세히 보기'}
+              </button>
+            </div>
+          )
         ) : (
           <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
             <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
