@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft, Check } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -57,6 +57,139 @@ const EXAMPLES = [
   '생활이 어려운데 도움받을 수 있나요?',
   '비자 만료되는데 어떻게 해야 하나요?',
 ];
+
+// 체크리스트 — LLM 텍스트의 리스트 항목(1./-/*)을 진짜 체크박스 UI로 렌더
+// 체크 상태는 localStorage("chk:<serviceName>")에 저장돼 같은 민원 다시 보면 복원
+function ChecklistRenderer({
+  content,
+  serviceName,
+  isHighContrast,
+  isLargeFont,
+}: {
+  content: string;
+  serviceName: string;
+  isHighContrast: boolean;
+  isLargeFont: boolean;
+}) {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`chk:${serviceName}`);
+      if (stored) setChecked(JSON.parse(stored));
+    } catch {}
+  }, [serviceName]);
+
+  const toggle = (key: string) => {
+    setChecked(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem(`chk:${serviceName}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
+  const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
+  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
+  const doneColor = isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-400 line-through';
+  const accent = isHighContrast ? 'text-yellow-400' : 'text-blue-600';
+  const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
+
+  const renderInline = (text: string, keyPrefix: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, j) =>
+      p.startsWith('**') && p.endsWith('**')
+        ? <strong key={`${keyPrefix}-${j}`} className={isHighContrast ? 'text-yellow-400' : 'text-blue-700'}>{p.slice(2, -2)}</strong>
+        : <span key={`${keyPrefix}-${j}`}>{p}</span>
+    );
+  };
+
+  const lines = content.split('\n');
+  // 체크 가능 항목 통계
+  const totalItems = lines.filter(l => {
+    const t = l.trimEnd();
+    return /^(\d+)\.\s+/.test(t) || /^[-*•]\s/.test(t);
+  }).length;
+  const doneItems = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <>
+      {totalItems > 0 && (
+        <div className={`flex items-center justify-between text-sm mb-2 pb-2 border-b ${isHighContrast ? 'border-zinc-700' : 'border-slate-200'}`}>
+          <span className={`font-semibold ${accent}`}>진행 {doneItems}/{totalItems}</span>
+          <div className={`flex-1 ml-3 h-1.5 rounded-full overflow-hidden ${isHighContrast ? 'bg-zinc-800' : 'bg-slate-100'}`}>
+            <div
+              className={`h-full rounded-full transition-all ${isHighContrast ? 'bg-yellow-400' : 'bg-emerald-500'}`}
+              style={{ width: `${totalItems ? (doneItems / totalItems) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {lines.map((line, i) => {
+        const trimmed = line.trimEnd();
+        if (!trimmed.trim()) return <div key={i} className="h-2" />;
+
+        // 헤더 (#, ##, ###)
+        const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        if (hMatch) {
+          const level = hMatch[1].length;
+          const cls = level <= 2
+            ? `block mt-4 first:mt-0 font-bold ${isLargeFont ? 'text-xl' : 'text-lg'} ${isHighContrast ? 'text-yellow-400' : 'text-blue-700'}`
+            : `block mt-3 first:mt-0 font-bold ${sizeRich}`;
+          return <div key={i} className={cls}>{renderInline(hMatch[2], `${i}h`)}</div>;
+        }
+
+        // 번호 리스트 → 체크박스
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numMatch) {
+          const key = `n${i}`;
+          const isChecked = !!checked[key];
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => toggle(key)}
+              className="w-full flex gap-3 items-start mt-2 first:mt-0 text-left"
+            >
+              <span className={`shrink-0 mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isChecked ? checkboxOn : checkboxOff}`}>
+                {isChecked && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+              </span>
+              <span className={`flex-1 ${isChecked ? doneColor : titleColor}`}>
+                <span className={`mr-1 font-bold ${accent}`}>{numMatch[1]}.</span>
+                {renderInline(numMatch[2], `${i}n`)}
+              </span>
+            </button>
+          );
+        }
+
+        // 불릿 리스트 → 체크박스 (들여쓰기)
+        if (/^[-*•]\s/.test(trimmed)) {
+          const key = `l${i}`;
+          const isChecked = !!checked[key];
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => toggle(key)}
+              className="w-full flex gap-3 items-start mt-1.5 first:mt-0 text-left pl-4"
+            >
+              <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isChecked ? checkboxOn : checkboxOff}`}>
+                {isChecked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+              </span>
+              <span className={`flex-1 text-sm ${isChecked ? doneColor : titleColor}`}>
+                {renderInline(trimmed.replace(/^[-*•]\s/, ''), `${i}l`)}
+              </span>
+            </button>
+          );
+        }
+
+        // 일반 텍스트
+        return <div key={i} className="mt-1.5 first:mt-0">{renderInline(trimmed, `${i}p`)}</div>;
+      })}
+    </>
+  );
+}
 
 export default function ChatPage() {
   const router = useRouter();
@@ -761,7 +894,12 @@ export default function ChatPage() {
                     <ClipboardList className="w-3.5 h-3.5" /> {m.serviceName} · {lang === 'en' ? 'Checklist' : '체크리스트'}
                   </div>
                   <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
-                    {renderRich(m.content)}
+                    <ChecklistRenderer
+                      content={m.content}
+                      serviceName={m.serviceName}
+                      isHighContrast={isHighContrast}
+                      isLargeFont={isLargeFont}
+                    />
                   </div>
                   {(info.official_link || info.online_apply_url || info.fee) && (
                     <div className={`rounded-2xl border p-4 ${isHighContrast ? 'bg-zinc-900 border-zinc-700' : 'bg-blue-50 border-blue-100'}`}>
