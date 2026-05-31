@@ -21,6 +21,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
 import { normalizeOfficialLink } from '@/lib/url';
+import { getCategoryMeta, fromChatbotCategory, CATEGORY_META } from '@/lib/category';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type Options = { user_types: string[]; age_groups: string[]; categories: string[] };
@@ -824,17 +825,26 @@ export default function ChatPage() {
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={useGrid ? 'grid grid-cols-2 sm:grid-cols-3 gap-2' : 'flex flex-col gap-2'}>
-                    {m.items.map((opt) => (
-                      <button
-                        key={opt}
-                        disabled={!isActive || sending}
-                        onClick={() => handler(opt)}
-                        className={`px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${optionCard} ${titleColor} ${sizeBubble}`}
-                      >
-                        {iconMap[opt] ? <span className="mr-2">{iconMap[opt]}</span> : null}
-                        {opt}
-                      </button>
-                    ))}
+                    {m.items.map((opt) => {
+                      const catKey = m.stage === 'step3' ? fromChatbotCategory(opt) : null;
+                      const catMeta = catKey ? CATEGORY_META[catKey] : null;
+                      return (
+                        <button
+                          key={opt}
+                          disabled={!isActive || sending}
+                          onClick={() => handler(opt)}
+                          className={`px-4 py-3 rounded-xl border-2 text-left font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] ${optionCard} ${titleColor} ${sizeBubble}`}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            {catMeta && !isHighContrast && (
+                              <span className={`inline-flex w-1.5 h-5 rounded-full ${catMeta.bar}`} aria-hidden />
+                            )}
+                            {iconMap[opt] ? <span>{iconMap[opt]}</span> : null}
+                            <span>{opt}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -900,15 +910,27 @@ export default function ChatPage() {
                         const subTitle = svc.official_name && svc.official_name !== svc.service_name ? svc.official_name : undefined;
                         const link = normalizeOfficialLink(svc.official_link || svc.url);
                         const targetChips = (svc.targets ?? '').split(/[,，·•]/).map(s => s.trim()).filter(Boolean).slice(0, 4);
+                        const cat = getCategoryMeta({ name: svc.service_name, ministry: (svc as any).ministry, department: (svc as any).agency });
                         return (
                           <button
                             key={idx}
                             disabled={sending}
                             onClick={() => pickService(svc)}
-                            className={`group rounded-2xl border-2 shadow-sm transition-all p-4 text-left flex items-start gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${serviceCard}`}
+                            className={`group rounded-2xl border-2 shadow-sm transition-all text-left flex items-stretch disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden active:scale-[0.99] ${serviceCard} ui-enter`}
+                            style={{ animationDelay: `${idx * 40}ms` }}
                           >
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-semibold ${titleColor} ${sizeBubble}`}>{svc.service_name}</p>
+                            {!isHighContrast && <div className={`w-1.5 ${cat.bar} shrink-0`} />}
+                            <div className="flex-1 p-4 flex items-start gap-3 min-w-0">
+                              <div className={`shrink-0 w-10 h-10 rounded-xl ${isHighContrast ? 'bg-zinc-800' : cat.bg} flex items-center justify-center text-xl`}>
+                                {cat.emoji}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isHighContrast ? 'bg-zinc-800 text-yellow-300 border border-yellow-400/40' : `${cat.bg} ${cat.text}`}`}>
+                                  {cat.label}
+                                </span>
+                              </div>
+                              <p className={`mt-1.5 font-semibold ${titleColor} ${sizeBubble}`}>{svc.service_name}</p>
                               {subTitle && <p className={`mt-0.5 text-xs ${subtleColor} truncate`}>{subTitle}</p>}
                               {targetChips.length > 0 && (
                                 <div className="mt-1.5 flex flex-wrap gap-1">
@@ -929,14 +951,15 @@ export default function ChatPage() {
                                     e.stopPropagation();
                                     window.open(link, '_blank', 'noopener,noreferrer');
                                   }}
-                                  className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold cursor-pointer ${isHighContrast ? 'text-yellow-400 hover:text-yellow-300' : 'text-blue-600 hover:text-blue-700'}`}
+                                  className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold cursor-pointer ${isHighContrast ? 'text-yellow-400 hover:text-yellow-300' : 'text-brand-600 hover:text-brand-700'}`}
                                 >
                                   <ExternalLink className="w-3 h-3" />
                                   {lang === 'en' ? 'Official page' : '공식 페이지'}
                                 </span>
                               )}
+                              </div>
+                              <ChevronRight className={`shrink-0 w-5 h-5 mt-1 ${subtleColor}`} />
                             </div>
-                            <ChevronRight className={`shrink-0 w-5 h-5 mt-1 ${subtleColor}`} />
                           </button>
                         );
                       })}

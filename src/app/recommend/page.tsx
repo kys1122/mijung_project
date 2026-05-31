@@ -8,6 +8,7 @@ import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { getCategoryMeta } from '@/lib/category';
 
 interface RecItem {
   id: number;
@@ -346,25 +347,40 @@ const RecommendScreen: React.FC = () => {
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredAll.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => navigateToService(s.id)}
-                  className={`group ${cardCls} p-4 text-left flex flex-col`}
-                >
-                  <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{s.name}</h3>
-                  {(s.ministry || s.department) && (
-                    <div className={`mt-1.5 flex items-center gap-1 text-xs ${subtleColor}`}>
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>{s.ministry || s.department}</span>
+              {filteredAll.map((s, idx) => {
+                const cat = getCategoryMeta({ name: s.name, ministry: s.ministry, department: s.department });
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => navigateToService(s.id)}
+                    className={`group ${cardCls} text-left flex overflow-hidden active:scale-[0.99] transition-transform ui-enter`}
+                    style={{ animationDelay: `${idx * 30}ms` }}
+                  >
+                    <div className={`w-1.5 ${cat.bar} shrink-0`} />
+                    <div className="flex-1 p-4 flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <div className={`shrink-0 w-9 h-9 rounded-xl ${cat.bg} flex items-center justify-center text-lg`}>
+                          {cat.emoji}
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cat.bg} ${cat.text}`}>
+                          {cat.label}
+                        </span>
+                      </div>
+                      <h3 className={`mt-3 font-bold ${titleColor} ${sizeCardTitle}`}>{s.name}</h3>
+                      {(s.ministry || s.department) && (
+                        <div className={`mt-1.5 flex items-center gap-1 text-xs ${subtleColor}`}>
+                          <Building2 className="w-3.5 h-3.5" />
+                          <span>{s.ministry || s.department}</span>
+                        </div>
+                      )}
+                      <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold self-start ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'} group-hover:gap-2 transition-all`}>
+                        {lang === 'en' ? 'View' : '자세히 보기'}
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </div>
                     </div>
-                  )}
-                  <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold self-start ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'} group-hover:gap-2 transition-all`}>
-                    {lang === 'en' ? 'View' : '자세히 보기'}
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </section>
