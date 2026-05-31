@@ -1057,7 +1057,7 @@ export default function ChatPage() {
               className={`flex-1 resize-none px-4 py-2.5 rounded-2xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 ${inputBg} ${sizeBubble}`}
             />
             <button onClick={sendFreeChat} disabled={!inputEnabled || sending || !input.trim()}
-              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label="send">
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label={lang === 'en' ? 'Send message' : '메시지 보내기'}>
               <Send className="w-5 h-5" />
             </button>
           </div>

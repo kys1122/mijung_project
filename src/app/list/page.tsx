@@ -183,7 +183,7 @@ const ListScreen: React.FC = () => {
                 <button
                   onClick={(e) => handleDelete(s.id, e)}
                   className={`shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-slate-500 hover:text-red-500 hover:bg-red-50'}`}
-                  aria-label="delete"
+                  aria-label={lang === 'en' ? 'Delete conversation' : '대화 삭제'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

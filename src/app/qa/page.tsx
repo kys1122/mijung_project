@@ -147,7 +147,9 @@ export default function QaPage() {
       }
     } catch (e) {
       console.error('answer 호출 실패:', e);
-      alert('서버 오류가 발생했습니다.');
+      alert(lang === 'en'
+        ? 'Connection lost. Please try again in a moment.'
+        : '연결이 끊겼어요. 잠시 후 다시 시도해 주세요.');
     }
   };
 
