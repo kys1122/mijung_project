@@ -97,8 +97,25 @@ const ProcedureScreen: React.FC = () => {
     }).catch(err => console.error('visit 기록 실패:', err));
   }, [id]);
 
-  const completedCount = step.filter((s: any) => s.isCompleted).length;
-  const progress = step.length > 0 ? (completedCount / step.length) * 100 : 0;
+  // 트랙별 진행률 — 공통 단계는 양쪽 트랙에 모두 카운트
+  const commonSteps = step.filter((s: any) => s.track === 'common' || !s.track);
+  const offlineSteps = step.filter((s: any) => s.track === 'offline');
+  const onlineSteps = step.filter((s: any) => s.track === 'online');
+  const commonDone = commonSteps.filter((s: any) => s.isCompleted).length;
+  const offlineDone = offlineSteps.filter((s: any) => s.isCompleted).length;
+  const onlineDone = onlineSteps.filter((s: any) => s.isCompleted).length;
+
+  const offlineTotal = commonSteps.length + offlineSteps.length;
+  const onlineTotal = commonSteps.length + onlineSteps.length;
+  const offlineTrackDone = commonDone + offlineDone;
+  const onlineTrackDone = commonDone + onlineDone;
+  const offlinePct = offlineTotal > 0 ? (offlineTrackDone / offlineTotal) * 100 : 0;
+  const onlinePct = onlineTotal > 0 ? (onlineTrackDone / onlineTotal) * 100 : 0;
+
+  // 트랙이 한쪽만 있으면 단일 진행률로 폴백
+  const showOffline = offlineSteps.length > 0;
+  const showOnline = onlineSteps.length > 0;
+  const showSplit = showOffline && showOnline;
 
   const Complete = async (stepId: number) => {
     const target = step.find((s: any) => s.id === stepId);
@@ -294,20 +311,70 @@ const ProcedureScreen: React.FC = () => {
           </div>
         )}
 
-        {/* 진행률 + 준비물 CTA */}
+        {/* 진행률 — 트랙별 분리 표시 */}
         <div className={`mt-4 p-5 ${cardCls} ui-enter`}>
           <div className="flex items-center justify-between">
             <span className={`font-bold ${titleColor} ${sizeBody}`}>{t.progress}</span>
-            <span className={`font-semibold tabular-nums ${metaColor} ${sizeBody}`}>
-              {completedCount}<span className={`mx-0.5 ${metaColor}`}>/</span>{step.length}
-            </span>
+            {!showSplit && (
+              <span className={`font-semibold tabular-nums ${metaColor} ${sizeBody}`}>
+                {commonDone + offlineDone + onlineDone}<span className="mx-0.5">/</span>{step.length}
+              </span>
+            )}
           </div>
-          <div className={`mt-3 w-full h-2.5 rounded-full overflow-hidden ${progressBg}`}>
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${progressFill}`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+
+          {showSplit ? (
+            <div className="mt-3 flex flex-col gap-3">
+              {/* 오프라인 트랙 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${descColor}`}>
+                    <Building2 className="w-4 h-4 opacity-70" />
+                    {lang === 'en' ? 'Offline' : '오프라인 신청'}
+                  </span>
+                  <span className={`text-xs font-semibold tabular-nums ${metaColor}`}>
+                    {offlineTrackDone}/{offlineTotal}
+                  </span>
+                </div>
+                <div className={`mt-1.5 w-full h-2 rounded-full overflow-hidden ${progressBg}`}>
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${progressFill}`}
+                    style={{ width: `${offlinePct}%` }}
+                  />
+                </div>
+              </div>
+              {/* 온라인 트랙 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${descColor}`}>
+                    <ExternalLink className="w-4 h-4 opacity-70" />
+                    {lang === 'en' ? 'Online' : '온라인 신청'}
+                  </span>
+                  <span className={`text-xs font-semibold tabular-nums ${metaColor}`}>
+                    {onlineTrackDone}/{onlineTotal}
+                  </span>
+                </div>
+                <div className={`mt-1.5 w-full h-2 rounded-full overflow-hidden ${progressBg}`}>
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${progressFill}`}
+                    style={{ width: `${onlinePct}%` }}
+                  />
+                </div>
+              </div>
+              <p className={`mt-1 text-xs ${metaColor}`}>
+                {lang === 'en'
+                  ? 'Common steps count toward both tracks'
+                  : '공통 단계(신청 자격 확인)는 두 트랙 모두에 반영돼요'}
+              </p>
+            </div>
+          ) : (
+            <div className={`mt-3 w-full h-2.5 rounded-full overflow-hidden ${progressBg}`}>
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${progressFill}`}
+                style={{ width: `${step.length > 0 ? ((commonDone + offlineDone + onlineDone) / step.length) * 100 : 0}%` }}
+              />
+            </div>
+          )}
+
           <button
             onClick={() => router.push(`/list/document/${id}`)}
             className={`mt-4 w-full inline-flex items-center justify-between gap-2 px-4 py-3.5 rounded-2xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
@@ -320,9 +387,9 @@ const ProcedureScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* 체크리스트 단계 */}
-        <div className="mt-6 flex flex-col gap-4">
-          {step.map((s: any, idx: number) => (
+        {/* 체크리스트 단계 — 트랙별 그룹화 */}
+        {(() => {
+          const renderStepCard = (s: any, displayNum: number) => (
             <div
               key={s.id}
               className={`relative ${s.isCompleted ? cardDoneCls : cardCls} transition-all`}
@@ -332,14 +399,13 @@ const ProcedureScreen: React.FC = () => {
                   ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-emerald-500 text-white')
                   : (isHighContrast ? 'bg-zinc-800 text-yellow-400 border border-yellow-400' : 'bg-brand-600 text-white')
               } shadow-[0_4px_12px_rgba(37,99,235,0.18)]`}>
-                {idx + 1}
+                {displayNum}
               </div>
               <div className="p-5 pt-7">
                 <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>{s.title}</h2>
                 {s.description && (
                   <p className={`mt-1.5 leading-relaxed ${descColor} ${sizeBody}`}>{s.description}</p>
                 )}
-
                 <div className="mt-5 flex flex-col sm:flex-row gap-2">
                   {s.link && (
                     <button
@@ -362,7 +428,6 @@ const ProcedureScreen: React.FC = () => {
                     {ttsLoadingId === s.id ? t.voicePlaying : t.voice}
                   </button>
                 </div>
-
                 <button
                   onClick={() => Complete(s.id)}
                   className="mt-5 flex items-center gap-2.5 group"
@@ -374,8 +439,48 @@ const ProcedureScreen: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+          );
+
+          const TrackHeader = ({ Icon, label }: { Icon: any; label: string }) => (
+            <div className="flex items-center gap-2 mt-7 mb-1">
+              <span className={`inline-flex w-7 h-7 rounded-xl items-center justify-center ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'}`}>
+                <Icon className="w-4 h-4" />
+              </span>
+              <h3 className={`font-bold ${titleColor} ${sizeBody}`}>{label}</h3>
+            </div>
+          );
+
+          return (
+            <div className="mt-6 flex flex-col gap-4">
+              {/* 공통 단계 (자격 확인) — 항상 먼저 */}
+              {commonSteps.map((s: any, idx: number) => renderStepCard(s, idx + 1))}
+
+              {showSplit ? (
+                <>
+                  {/* 오프라인 트랙 */}
+                  {offlineSteps.length > 0 && (
+                    <>
+                      <TrackHeader Icon={Building2} label={lang === 'en' ? 'Offline application' : '오프라인으로 신청'} />
+                      {offlineSteps.map((s: any, idx: number) => renderStepCard(s, commonSteps.length + idx + 1))}
+                    </>
+                  )}
+                  {/* 온라인 트랙 */}
+                  {onlineSteps.length > 0 && (
+                    <>
+                      <TrackHeader Icon={ExternalLink} label={lang === 'en' ? 'Online application' : '온라인으로 신청'} />
+                      {onlineSteps.map((s: any, idx: number) => renderStepCard(s, commonSteps.length + idx + 1))}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {offlineSteps.map((s: any, idx: number) => renderStepCard(s, commonSteps.length + idx + 1))}
+                  {onlineSteps.map((s: any, idx: number) => renderStepCard(s, commonSteps.length + idx + 1))}
+                </>
+              )}
+            </div>
+          );
+        })()}
       </div>
       <BottomNav />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Check, ChevronLeft, FileText, MessageCircle, Sparkles } from "lucide-react";
+import { Building2, Check, ChevronLeft, FileText, MessageCircle, Sparkles, Monitor } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import DetailModal from "./detailModal";
@@ -32,7 +32,6 @@ const DocumentScreen: React.FC = () => {
         setDoc(docs);
         setPageTitle(data.title || "");
 
-        // mijung 자체 파싱이 빈 결과면 챗봇 LLM 체크리스트로 폴백
         if (docs.length === 0 && data.title) {
           setLlmLoading(true);
           try {
@@ -66,8 +65,6 @@ const DocumentScreen: React.FC = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
-
-  const completedCount = doc.filter((d) => d.isCompleted).length;
 
   const Complete = async (docId: number) => {
     const target = doc.find((d) => d.id === docId);
@@ -111,20 +108,38 @@ const DocumentScreen: React.FC = () => {
 
   const t = useTranslations<DocumentStrings>('document', DOC_STRINGS as unknown as { ko: DocumentStrings; en: DocumentStrings }, lang);
 
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
-  const cardDone = isHighContrast ? 'bg-zinc-900 border-yellow-300 opacity-80' : 'bg-slate-100 border-slate-200';
-  const summaryBox = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-blue-50 border-blue-100';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
+  // 발급 트랙별 분리 — detail.online 있으면 온라인 발급 가능, detail.offline 있으면 오프라인 발급 가능
+  const offlineDocs = doc.filter(d => d.detail?.offline);
+  const onlineDocs = doc.filter(d => d.detail?.online);
+  const offlineDone = offlineDocs.filter(d => d.isCompleted).length;
+  const onlineDone = onlineDocs.filter(d => d.isCompleted).length;
+  const offlinePct = offlineDocs.length > 0 ? (offlineDone / offlineDocs.length) * 100 : 0;
+  const onlinePct = onlineDocs.length > 0 ? (onlineDone / onlineDocs.length) * 100 : 0;
+  const showSplit = offlineDocs.length > 0 && onlineDocs.length > 0;
+
+  // 토큰
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card';
+  const cardDoneCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-300 opacity-80' : 'rounded-2xl bg-success/5 border border-emerald-200 shadow-[0_2px_8px_rgba(15,23,42,0.05)]';
+  const summaryBox = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'rounded-2xl bg-brand-50 border border-brand-100';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-ink-2';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const metaColor = isHighContrast ? 'text-zinc-500' : 'text-ink-4';
+  const progressBg = isHighContrast ? 'bg-zinc-800' : 'bg-line-soft';
+  const progressFill = isHighContrast ? 'bg-yellow-400' : 'bg-brand-600';
   const checkboxOn = isHighContrast ? 'bg-yellow-400 border-yellow-400' : 'bg-emerald-500 border-emerald-500';
-  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-white border-slate-300';
+  const checkboxOff = isHighContrast ? 'bg-transparent border-zinc-500' : 'bg-surface border-line-strong';
   const readBtn = isHighContrast
     ? 'bg-yellow-400 text-black hover:bg-yellow-300'
-    : 'bg-blue-600 text-white hover:bg-blue-700';
+    : 'bg-brand-600 text-white hover:bg-brand-700 shadow-[0_4px_12px_rgba(37,99,235,0.22)]';
+  const trackChipOffline = isHighContrast
+    ? 'bg-zinc-800 text-yellow-300 border border-yellow-400/40'
+    : 'bg-brand-50 text-brand-700 border border-brand-100';
+  const trackChipOnline = isHighContrast
+    ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+    : 'bg-surface-muted text-ink-2 border border-line-soft';
 
-  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeBody = isLargeFont ? 'text-base sm:text-lg' : 'text-sm sm:text-base';
   const sizeDocTitle = isLargeFont ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl';
   const sizeBtn = isLargeFont ? 'text-lg' : 'text-base';
@@ -132,13 +147,13 @@ const DocumentScreen: React.FC = () => {
   return (
     <div className={`min-h-screen ${pageBg}`}>
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
-        <header className="flex items-center justify-between gap-2">
+        <header className="pt-2 flex items-center justify-between gap-2 ui-enter">
           <button
             onClick={() => router.back()}
-            className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
+            className={`inline-flex items-center gap-1 -ml-2 px-3 py-2 rounded-xl transition-colors hover:bg-black/5 ${titleColor}`}
           >
-            <ChevronLeft className="w-6 h-6" />
-            <span className={sizeBody}>{t.back}</span>
+            <ChevronLeft className="w-5 h-5" />
+            <span className={`font-medium ${sizeBody}`}>{t.back}</span>
           </button>
           <TopSettings
             lang={lang} setLang={handleLang}
@@ -147,22 +162,22 @@ const DocumentScreen: React.FC = () => {
           />
         </header>
 
-        <h1 className={`mt-4 font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
+        <h1 className={`mt-5 ui-page-title ${titleColor} ui-enter`}>
           {pageTitle || t.docsFallback}
         </h1>
 
         {doc.length === 0 ? (
           llmLoading ? (
-            <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
-              <div className={`mx-auto w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin`}></div>
+            <div className={`mt-6 p-6 text-center ${summaryBox} ui-enter`}>
+              <div className="mx-auto w-8 h-8 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin" />
               <p className={`mt-3 ${subtleColor} ${sizeBody}`}>
                 {lang === 'en' ? 'Preparing the checklist...' : '체크리스트를 준비하고 있어요...'}
               </p>
             </div>
           ) : llmChecklist ? (
-            <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
+            <div className={`mt-6 p-5 ${summaryBox} ui-enter`}>
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
                 <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
                   {lang === 'en' ? 'Suggested checklist' : 'AI 추천 체크리스트'}
                 </h2>
@@ -182,9 +197,9 @@ const DocumentScreen: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className={`mt-5 rounded-2xl border p-6 text-center ${summaryBox}`}>
-              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-white'}`}>
-                <Sparkles className={`w-6 h-6 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+            <div className={`mt-6 p-6 text-center ${summaryBox} ui-enter`}>
+              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-surface'}`}>
+                <Sparkles className={`w-6 h-6 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
               </div>
               <p className={`mt-4 font-semibold ${titleColor} ${sizeDocTitle}`}>
                 {lang === 'en' ? 'Documents not listed yet' : '준비물 정보가 정리되어 있지 않아요'}
@@ -204,84 +219,132 @@ const DocumentScreen: React.FC = () => {
             </div>
           )
         ) : (
-          <div className={`mt-5 rounded-2xl border p-5 ${summaryBox}`}>
-            <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>
-              {t.need} <span className={subtleColor}>({completedCount}/{doc.length})</span>
-            </h2>
-            <ul className="mt-3 flex flex-col gap-2">
-              {doc.map((d) => (
-                <li key={d.id} className="flex items-center gap-2">
-                  <span className={`w-5 h-5 shrink-0 flex items-center justify-center rounded-full border-2 ${d.isCompleted ? checkboxOn : checkboxOff}`}>
-                    {d.isCompleted && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-                  </span>
-                  <span className={`${sizeBody} ${
-                    d.isCompleted
-                      ? (isHighContrast ? 'text-zinc-500 line-through' : 'text-slate-500 line-through')
-                      : titleColor
-                  }`}>
-                    {d.title}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className={`mt-6 p-5 ${summaryBox} ui-enter`}>
+            <h2 className={`font-bold ${titleColor} ${sizeDocTitle}`}>{t.need}</h2>
+            {showSplit ? (
+              <div className="mt-3 flex flex-col gap-3">
+                {/* 오프라인 발급 트랙 */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${descColor}`}>
+                      <Building2 className="w-4 h-4 opacity-70" />
+                      {lang === 'en' ? 'Offline issuance' : '오프라인 발급'}
+                    </span>
+                    <span className={`text-xs font-semibold tabular-nums ${metaColor}`}>
+                      {offlineDone}/{offlineDocs.length}
+                    </span>
+                  </div>
+                  <div className={`mt-1.5 w-full h-2 rounded-full overflow-hidden ${progressBg}`}>
+                    <div className={`h-full rounded-full transition-all duration-500 ${progressFill}`} style={{ width: `${offlinePct}%` }} />
+                  </div>
+                </div>
+                {/* 온라인 발급 트랙 */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${descColor}`}>
+                      <Monitor className="w-4 h-4 opacity-70" />
+                      {lang === 'en' ? 'Online issuance' : '온라인 발급'}
+                    </span>
+                    <span className={`text-xs font-semibold tabular-nums ${metaColor}`}>
+                      {onlineDone}/{onlineDocs.length}
+                    </span>
+                  </div>
+                  <div className={`mt-1.5 w-full h-2 rounded-full overflow-hidden ${progressBg}`}>
+                    <div className={`h-full rounded-full transition-all duration-500 ${progressFill}`} style={{ width: `${onlinePct}%` }} />
+                  </div>
+                </div>
+                <p className={`mt-1 text-xs ${metaColor}`}>
+                  {lang === 'en'
+                    ? 'Some documents can be issued either online or offline — they count in both tracks.'
+                    : '온·오프라인 모두 발급 가능한 서류는 두 트랙 모두에 반영돼요.'}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <span className={`font-medium ${subtleColor}`}>
+                  {doc.filter(d => d.isCompleted).length}/{doc.length} {lang === 'en' ? 'ready' : '준비 완료'}
+                </span>
+                <div className={`mt-1.5 w-full h-2 rounded-full overflow-hidden ${progressBg}`}>
+                  <div className={`h-full rounded-full transition-all duration-500 ${progressFill}`} style={{ width: `${doc.length > 0 ? (doc.filter(d => d.isCompleted).length / doc.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <div className="mt-6 flex flex-col gap-4">
-          {doc.map((d) => (
-            <article
-              key={d.id}
-              className={`rounded-2xl border shadow-sm transition-all ${d.isCompleted ? cardDone : cardBg}`}
-            >
-              <div className="p-5">
-                <div className="flex items-start gap-2">
-                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold shrink-0 ${
-                    isHighContrast ? 'bg-yellow-400 text-black' : 'bg-blue-100 text-blue-700'
-                  } ${sizeBody}`}>
-                    {d.id}
-                  </span>
-                  <h2 className={`flex-1 font-bold ${
-                    d.isCompleted ? subtleColor : titleColor
-                  } ${sizeDocTitle}`}>
-                    {d.title}
-                  </h2>
-                </div>
-                <p className={`mt-3 leading-relaxed ${
-                  d.isCompleted ? subtleColor : descColor
-                } ${sizeBody}`}>
-                  {d.description}
-                </p>
-                <div className="mt-4 flex items-center gap-2">
-                  <Building2 className={`w-5 h-5 ${d.isCompleted ? subtleColor : descColor}`} />
-                  <span className={`font-medium ${d.isCompleted ? subtleColor : descColor} ${sizeBody}`}>
-                    {d.institution}
-                  </span>
-                </div>
-
-                <div className="mt-5 flex flex-col gap-2">
-                  <button
-                    onClick={() => handleOpenDetail(d)}
-                    className={`w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${readBtn} ${sizeBtn}`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    {t.read}
-                  </button>
-
-                  <button
-                    onClick={() => Complete(d.id)}
-                    className="mt-1 flex items-center gap-2"
-                  >
-                    <span className={`w-7 h-7 flex items-center justify-center rounded-md border-2 transition-colors ${d.isCompleted ? checkboxOn : checkboxOff}`}>
-                      {d.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+          {doc.map((d) => {
+            const hasOnline = !!d.detail?.online;
+            const hasOffline = !!d.detail?.offline;
+            return (
+              <article
+                key={d.id}
+                className={`${d.isCompleted ? cardDoneCls : cardCls} transition-all`}
+              >
+                <div className="p-5">
+                  <div className="flex items-start gap-2">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold shrink-0 ${
+                      isHighContrast ? 'bg-yellow-400 text-black' : 'bg-brand-100 text-brand-700'
+                    } ${sizeBody}`}>
+                      {d.id}
                     </span>
-                    <span className={`font-semibold ${d.isCompleted ? subtleColor : titleColor} ${sizeBody}`}>
-                      {t.done}
+                    <h2 className={`flex-1 font-bold ${d.isCompleted ? subtleColor : titleColor} ${sizeDocTitle}`}>
+                      {d.title}
+                    </h2>
+                  </div>
+
+                  {(hasOnline || hasOffline) && (
+                    <div className="mt-2.5 ml-9 flex flex-wrap gap-1.5">
+                      {hasOffline && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${trackChipOffline}`}>
+                          <Building2 className="w-3 h-3" />
+                          {lang === 'en' ? 'Offline' : '오프라인'}
+                        </span>
+                      )}
+                      {hasOnline && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${trackChipOnline}`}>
+                          <Monitor className="w-3 h-3" />
+                          {lang === 'en' ? 'Online' : '온라인'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <p className={`mt-3 leading-relaxed ${d.isCompleted ? subtleColor : descColor} ${sizeBody}`}>
+                    {d.description}
+                  </p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <Building2 className={`w-5 h-5 ${d.isCompleted ? subtleColor : descColor}`} />
+                    <span className={`font-medium ${d.isCompleted ? subtleColor : descColor} ${sizeBody}`}>
+                      {d.institution}
                     </span>
-                  </button>
+                  </div>
+
+                  <div className="mt-5 flex flex-col gap-2">
+                    <button
+                      onClick={() => handleOpenDetail(d)}
+                      className={`w-full py-3 rounded-2xl font-semibold transition-colors flex items-center justify-center gap-1.5 ${readBtn} ${sizeBtn}`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      {t.read}
+                    </button>
+
+                    <button
+                      onClick={() => Complete(d.id)}
+                      className="mt-1 flex items-center gap-2.5 group"
+                    >
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-lg border-2 transition-all ${d.isCompleted ? checkboxOn : checkboxOff} group-hover:scale-105`}>
+                        {d.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+                      </span>
+                      <span className={`font-semibold ${d.isCompleted ? subtleColor : titleColor} ${sizeBody}`}>
+                        {t.done}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
         <DetailModal
           isOpen={modalOpen}

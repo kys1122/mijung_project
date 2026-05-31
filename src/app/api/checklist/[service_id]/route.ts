@@ -41,23 +41,43 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
             ? (await executeQuery(progressSql, [String(userId), data.id])).map((p: any) => p.item_id)
             : [];
 
-        // getPureLink 함수를 적용하여 링크 정제
-        const steps = [
+        // 신청 자격 확인은 공통 단계. 접수는 오프라인/온라인 트랙으로 분리.
+        // track: 'common' = 양쪽 트랙 모두 카운트, 'offline'/'online' = 해당 트랙만
+        const offlineLink = getPureLink(data.official_link_method);
+        const onlineLink = getPureLink(data.online_method);
+        const hasOffline = !!(data.application_steps || offlineLink);
+        const hasOnline = !!(data.online_method || onlineLink);
+
+        const steps: any[] = [
             {
                 id: 1,
+                track: 'common',
                 title: "신청 자격 확인하기",
                 description: data.eligibility ? data.eligibility.split('\n')[0] : "자격 요건을 확인하세요.",
                 isCompleted: completedItems.includes("step_1"),
-                link: getPureLink(data.official_link_method) 
-            },
-            {
-                id: 2,
-                title: "신청 접수 진행",
-                description: data.application_steps || "접수처를 확인하세요.",
-                isCompleted: completedItems.includes("step_2"),
-                link: getPureLink(data.online_method) 
+                link: offlineLink
             }
         ];
+        if (hasOffline) {
+            steps.push({
+                id: 2,
+                track: 'offline',
+                title: "오프라인으로 신청하기",
+                description: data.application_steps || "주민센터 등 오프라인 접수처에서 신청하세요.",
+                isCompleted: completedItems.includes("step_2"),
+                link: offlineLink
+            });
+        }
+        if (hasOnline) {
+            steps.push({
+                id: 3,
+                track: 'online',
+                title: "온라인으로 신청하기",
+                description: data.online_method || "온라인 신청 페이지에서 접수하세요.",
+                isCompleted: completedItems.includes("step_3"),
+                link: onlineLink
+            });
+        }
 
         const docRegex = /\((\d+)\)\s*([^(\n<]+)/g;
         let match;
