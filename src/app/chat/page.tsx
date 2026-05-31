@@ -235,6 +235,7 @@ export default function ChatPage() {
   const [detailInput, setDetailInput] = useState('');
   const [sending, setSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [sttError, setSttError] = useState<string | null>(null);
   const [chatSessionId, setChatSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -572,6 +573,7 @@ export default function ChatPage() {
 
   // 음성
   const startRec = async () => {
+    setSttError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
@@ -587,8 +589,16 @@ export default function ChatPage() {
           if (data?.text) {
             if (stage === 'step4') setDetailInput(prev => (prev ? prev + ' ' : '') + data.text);
             else setInput(prev => (prev ? prev + ' ' : '') + data.text);
+          } else {
+            setSttError(lang === 'en' ? "Couldn't hear you. Try again?" : '음성을 인식하지 못했어요. 다시 시도해 주세요.');
+            setTimeout(() => setSttError(null), 5000);
           }
-        } catch (e) { console.error('STT 실패:', e); }
+        } catch (e) {
+          console.error('STT 실패:', e);
+          setSttError(lang === 'en' ? 'Voice recognition failed.' : '음성 인식에 실패했어요.');
+          setTimeout(() => setSttError(null), 5000);
+        }
+        stream.getTracks().forEach(t => t.stop());
       };
       rec.start();
       setIsRecording(true);
@@ -853,7 +863,8 @@ export default function ChatPage() {
                         onClick={isRecording ? stopRec : startRec}
                         disabled={!isActive || sending}
                         className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${micBtn}`}
-                        aria-label="voice"
+                        aria-label={isRecording ? (lang === 'en' ? 'Stop recording' : '녹음 중지') : (lang === 'en' ? 'Start voice input' : '음성 입력 시작')}
+                        aria-pressed={isRecording}
                       >
                         <Mic className="w-4 h-4" />
                       </button>
@@ -1001,9 +1012,31 @@ export default function ChatPage() {
         </div>
 
         <div className={`px-5 sm:px-8 py-3 border-t ${headerBorder}`}>
+          {/* 상태 라인: 녹음 중 또는 STT 에러 */}
+          {(isRecording || sttError) && (
+            <div className="mb-2 flex items-center gap-2 text-sm">
+              {isRecording ? (
+                <>
+                  <span className="relative flex w-2.5 h-2.5">
+                    <span className="absolute inline-flex w-full h-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                    <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                  </span>
+                  <span className={isHighContrast ? 'text-yellow-400 font-medium' : 'text-red-600 font-medium'}>
+                    {lang === 'en' ? 'Listening… tap mic to stop' : '듣는 중… 마이크를 다시 누르면 멈춰요'}
+                  </span>
+                </>
+              ) : (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${isHighContrast ? 'bg-zinc-800 text-yellow-300' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                  <span aria-hidden>⚠️</span>{sttError}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <button onClick={isRecording ? stopRec : startRec} disabled={!inputEnabled || sending}
-              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm disabled:opacity-40 ${micBtn}`} aria-label="voice">
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm disabled:opacity-40 ${micBtn}`}
+              aria-label={isRecording ? (lang === 'en' ? 'Stop recording' : '녹음 중지') : (lang === 'en' ? 'Start voice input' : '음성 입력 시작')}
+              aria-pressed={isRecording}>
               <Mic className="w-5 h-5" />
             </button>
             <textarea
