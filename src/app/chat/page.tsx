@@ -726,20 +726,34 @@ export default function ChatPage() {
           />
         </header>
 
-        {/* 진행 인디케이터 */}
+        {/* 진행 인디케이터 — 모바일은 단계+막대만, 데스크탑은 전체 라벨 */}
         {currentStepIdx >= 0 && (
-          <div className={`px-5 sm:px-8 py-2 border-b ${headerBorder} overflow-x-auto`}>
-            <div className="flex items-center gap-1.5 min-w-max text-xs">
+          <div className={`px-5 sm:px-8 py-3 border-b ${headerBorder}`}>
+            {/* 모바일: 현재 단계 라벨 + 진행 막대 */}
+            <div className="sm:hidden flex items-center gap-3">
+              <span className={`shrink-0 text-sm font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
+                {currentStepIdx + 1}/{STEP_LABELS.length} · {STEP_LABELS[currentStepIdx]}
+              </span>
+              <div className={`flex-1 h-2 rounded-full overflow-hidden ${isHighContrast ? 'bg-zinc-800' : 'bg-slate-200'}`}>
+                <div
+                  className={`h-full rounded-full transition-all ${isHighContrast ? 'bg-yellow-400' : 'bg-blue-600'}`}
+                  style={{ width: `${((currentStepIdx + 1) / STEP_LABELS.length) * 100}%` }}
+                />
+              </div>
+            </div>
+            {/* 데스크탑: 전체 단계 라벨 */}
+            <div className="hidden sm:flex items-center gap-2 text-sm">
               {STEP_LABELS.map((label, i) => (
-                <div key={i} className="flex items-center gap-1.5">
+                <div key={i} className="flex items-center gap-2">
                   <span className={
                     i === currentStepIdx
                       ? `font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`
                       : i < currentStepIdx
-                        ? subtleColor
-                        : (isHighContrast ? 'text-zinc-600' : 'text-slate-300')
+                        ? `font-medium ${isHighContrast ? 'text-zinc-300' : 'text-slate-700'}`
+                        : (isHighContrast ? 'text-zinc-600' : 'text-slate-500')
                   }>
-                    {i < currentStepIdx ? '✓' : i === currentStepIdx ? '●' : '○'} {label}
+                    <span className="mr-1">{i < currentStepIdx ? '✓' : i === currentStepIdx ? '●' : '○'}</span>
+                    {label}
                   </span>
                   {i < STEP_LABELS.length - 1 && <span className={isHighContrast ? 'text-zinc-700' : 'text-slate-300'}>—</span>}
                 </div>
@@ -786,7 +800,8 @@ export default function ChatPage() {
                 || (m.stage === 'step3' && stage === 'step3');
               const handler = m.stage === 'step1' ? pickStep1 : m.stage === 'step2' ? pickStep2 : pickStep3;
               const iconMap = m.stage === 'step1' ? TYPE_ICON : m.stage === 'step3' ? CAT_ICON : {};
-              const useGrid = m.stage === 'step2' || m.stage === 'step3';
+              // 모든 단계 옵션을 동일한 grid로 통일 (시각 계층 일관성)
+              const useGrid = true;
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={useGrid ? 'grid grid-cols-2 sm:grid-cols-3 gap-2' : 'flex flex-col gap-2'}>
