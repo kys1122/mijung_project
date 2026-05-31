@@ -234,10 +234,10 @@ const ProcedureScreen: React.FC = () => {
           </h1>
         </div>
 
-        {/* 한눈에 보기 — 문단+grid (사용자 요청으로 이전 형식 복원) */}
+        {/* 한눈에 보기 — 가독성 강화: 메타 칩 + 좌측 액센트 바 본문 */}
         {(info.overview || info.eligibility || info.ministry || info.fee) && (
           <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2">
               <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
                 <Info className="w-4 h-4" />
               </span>
@@ -245,42 +245,60 @@ const ProcedureScreen: React.FC = () => {
                 {lang === 'en' ? 'Quick facts' : '한눈에 보기'}
               </h2>
             </div>
-            {info.overview && (
-              <p className={`leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
-                {info.overview}
-              </p>
-            )}
-            {info.eligibility && (
-              <div className="mt-3">
-                <p className={`font-semibold ${titleColor} ${sizeBody}`}>
-                  {lang === 'en' ? 'Who is eligible' : '신청 자격'}
-                </p>
-                <p className={`mt-1 leading-relaxed whitespace-pre-line ${descColor} ${sizeBody}`}>
-                  {info.eligibility}
-                </p>
+
+            {/* 메타 칩 — 부처/수수료 */}
+            {(info.ministry || info.department || info.fee) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(info.ministry || info.department) && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${isHighContrast ? 'bg-zinc-800 text-zinc-200 border border-zinc-700' : 'bg-surface-muted text-ink-2 border border-line-soft'}`}>
+                    <Building2 className="w-3.5 h-3.5 opacity-70" />
+                    <span className="font-medium">{info.ministry || info.department}</span>
+                  </span>
+                )}
+                {info.fee && (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${isHighContrast ? 'bg-zinc-800 text-zinc-200 border border-zinc-700' : 'bg-surface-muted text-ink-2 border border-line-soft'}`}>
+                    <Coins className="w-3.5 h-3.5 opacity-70" />
+                    <span className="font-medium">{info.fee}</span>
+                  </span>
+                )}
               </div>
             )}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(info.ministry || info.department) && (
-                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
-                  <Building2 className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{info.ministry || info.department}</span>
+
+            {/* 개요 */}
+            {info.overview && (
+              <div className="mt-5">
+                <p className={`ui-section-label ${metaColor} mb-1.5`}>
+                  {lang === 'en' ? 'OVERVIEW' : '개요'}
+                </p>
+                <div className={`pl-3 border-l-[3px] ${isHighContrast ? 'border-yellow-400' : 'border-brand-200'}`}>
+                  <p className={`leading-loose whitespace-pre-line ${descColor} ${sizeBody}`}>
+                    {info.overview}
+                  </p>
                 </div>
-              )}
-              {info.fee && (
-                <div className={`flex items-center gap-2 ${subtleColor} ${sizeBody}`}>
-                  <Coins className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{info.fee}</span>
+              </div>
+            )}
+
+            {/* 신청 자격 */}
+            {info.eligibility && (
+              <div className="mt-5">
+                <p className={`ui-section-label ${metaColor} mb-1.5`}>
+                  {lang === 'en' ? 'WHO IS ELIGIBLE' : '신청 자격'}
+                </p>
+                <div className={`pl-3 border-l-[3px] ${isHighContrast ? 'border-yellow-400' : 'border-brand-200'}`}>
+                  <p className={`leading-loose whitespace-pre-line ${descColor} ${sizeBody}`}>
+                    {info.eligibility}
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
             {(() => {
               const officialUrl = normalizeOfficialLink(info.official_link);
               if (!officialUrl) return null;
               return (
                 <button
                   onClick={() => window.open(officialUrl, '_blank', 'noopener,noreferrer')}
-                  className={`mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+                  className={`mt-5 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
                 >
                   <ScrollText className="w-4 h-4" />
                   {lang === 'en' ? 'Official page' : '공식 안내 페이지'}
