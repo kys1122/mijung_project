@@ -361,6 +361,17 @@ export default function ChatPage() {
     }
   };
 
+  // /dashboard "내 진행 중인 민원"에 기록되도록 visit API 호출
+  const recordVisit = async (serviceName: string, step: 'description' | 'checklist') => {
+    if (!getAccessToken()) return;
+    try {
+      await apiFetch(`/api/my-services/${encodeURIComponent(serviceName)}/visit`, {
+        method: 'POST',
+        body: JSON.stringify({ step }),
+      });
+    } catch (e) { console.error('visit 기록 실패:', e); }
+  };
+
   // Step 6: 카드 선택 → service_detail
   const pickService = async (svc: Service) => {
     setSelectedService(svc);
@@ -370,6 +381,8 @@ export default function ChatPage() {
       { kind: 'thinking', role: 'assistant' },
     ]);
     setSending(true);
+    // /dashboard에 "이 사용자가 이 민원 진행 중"으로 기록
+    recordVisit(svc.service_name, 'description');
     try {
       const res = await fetch('/api/service-detail', {
         method: 'POST',
@@ -403,6 +416,7 @@ export default function ChatPage() {
       { kind: 'thinking', role: 'assistant' },
     ]);
     setSending(true);
+    recordVisit(selectedService.service_name, 'checklist');
     try {
       const res = await fetch('/api/llm-checklist', {
         method: 'POST',
