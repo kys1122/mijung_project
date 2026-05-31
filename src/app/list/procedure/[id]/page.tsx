@@ -234,82 +234,25 @@ const ProcedureScreen: React.FC = () => {
           </h1>
         </div>
 
-        {/* 한눈에 보기 — 가독성 강화: 메타 칩 + 좌측 액센트 바 본문 */}
-        {(info.overview || info.eligibility || info.ministry || info.fee) && (
-          <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
-                <Info className="w-4 h-4" />
-              </span>
-              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
-                {lang === 'en' ? 'Quick facts' : '한눈에 보기'}
-              </h2>
+        {/* 공식 안내 페이지 — '한눈에 보기' 제거 후에도 링크 진입은 유지 */}
+        {(() => {
+          const officialUrl = normalizeOfficialLink(info.official_link);
+          if (!officialUrl) return null;
+          return (
+            <div className="mt-4 ui-enter">
+              <button
+                onClick={() => window.open(officialUrl, '_blank', 'noopener,noreferrer')}
+                className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+              >
+                <ScrollText className="w-4 h-4" />
+                {lang === 'en' ? 'Official page' : '공식 안내 페이지'}
+                <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+              </button>
             </div>
+          );
+        })()}
 
-            {/* 메타 칩 — 부처/수수료 */}
-            {(info.ministry || info.department || info.fee) && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(info.ministry || info.department) && (
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${isHighContrast ? 'bg-zinc-800 text-zinc-200 border border-zinc-700' : 'bg-surface-muted text-ink-2 border border-line-soft'}`}>
-                    <Building2 className="w-3.5 h-3.5 opacity-70" />
-                    <span className="font-medium">{info.ministry || info.department}</span>
-                  </span>
-                )}
-                {info.fee && (
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${isHighContrast ? 'bg-zinc-800 text-zinc-200 border border-zinc-700' : 'bg-surface-muted text-ink-2 border border-line-soft'}`}>
-                    <Coins className="w-3.5 h-3.5 opacity-70" />
-                    <span className="font-medium">{info.fee}</span>
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* 개요 */}
-            {info.overview && (
-              <div className="mt-5">
-                <p className={`ui-section-label ${metaColor} mb-1.5`}>
-                  {lang === 'en' ? 'OVERVIEW' : '개요'}
-                </p>
-                <div className={`pl-3 border-l-[3px] ${isHighContrast ? 'border-yellow-400' : 'border-brand-200'}`}>
-                  <p className={`leading-loose whitespace-pre-line ${descColor} ${sizeBody}`}>
-                    {info.overview}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* 신청 자격 */}
-            {info.eligibility && (
-              <div className="mt-5">
-                <p className={`ui-section-label ${metaColor} mb-1.5`}>
-                  {lang === 'en' ? 'WHO IS ELIGIBLE' : '신청 자격'}
-                </p>
-                <div className={`pl-3 border-l-[3px] ${isHighContrast ? 'border-yellow-400' : 'border-brand-200'}`}>
-                  <p className={`leading-loose whitespace-pre-line ${descColor} ${sizeBody}`}>
-                    {info.eligibility}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {(() => {
-              const officialUrl = normalizeOfficialLink(info.official_link);
-              if (!officialUrl) return null;
-              return (
-                <button
-                  onClick={() => window.open(officialUrl, '_blank', 'noopener,noreferrer')}
-                  className={`mt-5 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold transition-colors ${docsBtn} ${sizeBody}`}
-                >
-                  <ScrollText className="w-4 h-4" />
-                  {lang === 'en' ? 'Official page' : '공식 안내 페이지'}
-                  <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                </button>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* 자세한 안내 — 사용자가 한눈에 보기 후 더 알아보고 싶을 때 */}
+        {/* 자세한 안내 */}
         {(llmDetail || llmDetailLoading) && (
           <div className={`mt-4 p-5 sm:p-6 ${cardCls} ui-enter`}>
             <div className="flex items-center gap-2 mb-3">
