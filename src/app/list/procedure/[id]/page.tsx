@@ -9,6 +9,7 @@ import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/str
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
+import RichTextRenderer from '../../../components/RichTextRenderer';
 
 const ProcedureScreen: React.FC = () => {
   const router = useRouter();
@@ -26,6 +27,8 @@ const ProcedureScreen: React.FC = () => {
     official_link: string | null;
   }>({ overview: null, eligibility: null, ministry: null, department: null, fee: null, official_link: null });
   const [loading, setLoading] = useState(true);
+  const [llmDetail, setLlmDetail] = useState<string>('');
+  const [llmDetailLoading, setLlmDetailLoading] = useState(false);
 
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
@@ -63,6 +66,20 @@ const ProcedureScreen: React.FC = () => {
           fee: data.fee ?? null,
           official_link: data.official_link ?? null,
         });
+        // 챗봇 LLM 민원 안내 자동 호출 (캐시되어 두 번째부터는 즉시)
+        if (data.name) {
+          setLlmDetailLoading(true);
+          try {
+            const detRes = await fetch('/api/service-detail', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ service_name: data.name, lang: 'ko', user_type: '' }),
+            });
+            const detData = await detRes.json();
+            if (detData?.detail) setLlmDetail(detData.detail);
+          } catch (e) { console.error('service-detail 호출 실패:', e); }
+          finally { setLlmDetailLoading(false); }
+        }
       } catch (err) {
         console.error("데이터 로드 실패:", err);
       } finally {
@@ -192,12 +209,32 @@ const ProcedureScreen: React.FC = () => {
           {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
         </h1>
 
+        {/* LLM 자세한 안내 (chat의 service_detail과 동일) */}
+        {(llmDetail || llmDetailLoading) && (
+          <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Info className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
+                {lang === 'en' ? 'Detailed guide' : '민원 자세히 보기'}
+              </h2>
+            </div>
+            {llmDetailLoading && !llmDetail ? (
+              <div className="flex items-center gap-2">
+                <div className={`w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin`}></div>
+                <span className={subtleColor}>{lang === 'en' ? 'Loading detailed guide...' : '자세한 안내를 불러오는 중...'}</span>
+              </div>
+            ) : (
+              <RichTextRenderer text={llmDetail} isHighContrast={isHighContrast} isLargeFont={isLargeFont} />
+            )}
+          </div>
+        )}
+
         {(info.overview || info.eligibility || info.ministry || info.fee) && (
           <div className={`mt-5 rounded-2xl border p-5 ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
               <Info className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
               <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
-                {lang === 'en' ? 'About this service' : '민원 안내'}
+                {lang === 'en' ? 'Quick facts' : '한눈에 보기'}
               </h2>
             </div>
             {info.overview && (

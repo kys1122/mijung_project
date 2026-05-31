@@ -10,6 +10,7 @@ import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strin
 import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
+import ChecklistRenderer from '../../../components/ChecklistRenderer';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();
@@ -166,9 +167,12 @@ const DocumentScreen: React.FC = () => {
                   {lang === 'en' ? 'Suggested checklist' : 'AI 추천 체크리스트'}
                 </h2>
               </div>
-              <pre className={`whitespace-pre-wrap font-sans leading-relaxed ${sizeBody} ${descColor}`}>
-                {llmChecklist}
-              </pre>
+              <ChecklistRenderer
+                content={llmChecklist}
+                serviceName={pageTitle || `service-${id}`}
+                isHighContrast={isHighContrast}
+                isLargeFont={isLargeFont}
+              />
               <button
                 onClick={() => router.push(`/chat`)}
                 className={`mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold transition-colors ${readBtn} ${sizeBody}`}
