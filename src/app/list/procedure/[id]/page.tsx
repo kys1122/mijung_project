@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, ChevronLeft, ExternalLink, FileText, Volume2, Building2, Coins, ScrollText, Info } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ExternalLink, FileText, Volume2, Building2, Coins, ScrollText, Info } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
@@ -294,15 +294,15 @@ const ProcedureScreen: React.FC = () => {
               style={{ width: `${progress}%` }}
             />
           </div>
-        </div>
-
-        <div className="mt-4 flex justify-end">
           <button
             onClick={() => router.push(`/list/document/${id}`)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+            className={`mt-4 w-full inline-flex items-center justify-between gap-2 px-4 py-3 rounded-xl border-2 font-semibold transition-colors ${docsBtn} ${sizeBody}`}
           >
-            <FileText className="w-4 h-4" />
-            {t.docs}
+            <span className="inline-flex items-center gap-1.5">
+              <FileText className="w-4 h-4" />
+              {t.docs}
+            </span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 

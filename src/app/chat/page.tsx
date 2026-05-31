@@ -540,6 +540,14 @@ export default function ChatPage() {
   };
 
   const handleNewChat = async () => {
+    // 진행 중 대화가 있으면 확인
+    const hasProgress = messages.length > 0 && stage !== 'step1';
+    if (hasProgress) {
+      const ok = confirm(lang === 'en'
+        ? 'Start a new conversation? Current progress will be saved in history.'
+        : '새 대화를 시작할까요? 지금까지의 진행 상황은 기록에서 다시 볼 수 있어요.');
+      if (!ok) return;
+    }
     setMessages([]);
     setSelections({ user_type: '', age_group: '', category: '', detail: '' });
     setSelectedService(null);
@@ -721,11 +729,11 @@ export default function ChatPage() {
       <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
         <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
           <div className="flex items-center gap-1">
-            <button onClick={handleNewChat} className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label="새 대화">
+            <button onClick={handleNewChat} className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={lang === 'en' ? 'New chat' : '새 대화 시작'}>
               <PenSquare className="w-5 h-5" />
               <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
             </button>
-            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label="기록" title={lang === 'en' ? 'History' : '기록'}>
+            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={lang === 'en' ? 'History' : '기록 보기'} title={lang === 'en' ? 'History' : '기록'}>
               <History className="w-5 h-5" />
             </button>
           </div>
