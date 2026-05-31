@@ -142,7 +142,7 @@ const ListScreen: React.FC = () => {
             </p>
             <button
               onClick={() => router.push('/user/login')}
-              className={`mt-5 w-full py-3 rounded-xl font-semibold transition-colors ${ctaBtn}`}
+              className={`mt-5 w-full py-3.5 rounded-xl font-semibold transition-colors ${ctaBtn}`}
             >
               {lang === 'en' ? 'Login' : '로그인하러 가기'}
             </button>

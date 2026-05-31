@@ -104,7 +104,7 @@ const DashboardScreen: React.FC = () => {
             <p className="mt-1 text-sm text-slate-500">진행 중인 민원을 보려면 먼저 로그인해주세요</p>
             <button
               onClick={() => router.push('/user/login')}
-              className="mt-5 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
+              className="mt-5 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
             >
               로그인하기
             </button>
@@ -118,7 +118,7 @@ const DashboardScreen: React.FC = () => {
             <p className="mt-1 text-sm text-slate-500">민원 목록에서 원하는 민원을 시작해보세요</p>
             <button
               onClick={() => router.push('/list')}
-              className="mt-5 w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
+              className="mt-5 w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors rounded-xl text-white font-semibold"
             >
               민원 찾아보기
             </button>
