@@ -127,20 +127,51 @@ function ChecklistRenderer({
       )}
 
       {lines.map((line, i) => {
-        const trimmed = line.trimEnd();
-        if (!trimmed.trim()) return <div key={i} className="h-2" />;
+        if (!line.trim()) return <div key={i} className="h-3" />;
+
+        // 들여쓰기 수준 — 줄 앞 공백 개수로 계산 (2칸 = 1단계)
+        const indentSpaces = (line.match(/^(\s*)/)?.[1] ?? '').replace(/\t/g, '  ').length;
+        const indentLevel = Math.min(Math.floor(indentSpaces / 2), 3);
+        const indentClass = ['pl-0', 'pl-5', 'pl-10', 'pl-14'][indentLevel];
+
+        const trimmed = line.trim();
 
         // 헤더 (#, ##, ###)
         const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
         if (hMatch) {
           const level = hMatch[1].length;
           const cls = level <= 2
-            ? `block mt-4 first:mt-0 font-bold ${isLargeFont ? 'text-xl' : 'text-lg'} ${isHighContrast ? 'text-yellow-400' : 'text-blue-700'}`
-            : `block mt-3 first:mt-0 font-bold ${sizeRich}`;
+            ? `block mt-5 first:mt-0 pb-2 font-bold border-b ${isHighContrast ? 'border-yellow-400/40 text-yellow-400' : 'border-blue-200 text-blue-700'} ${isLargeFont ? 'text-2xl' : 'text-xl'}`
+            : `block mt-4 first:mt-0 font-bold ${sizeRich} ${isHighContrast ? 'text-yellow-300' : 'text-slate-800'}`;
           return <div key={i} className={cls}>{renderInline(hMatch[2], `${i}h`)}</div>;
         }
 
-        // 번호 리스트 → 체크박스
+        // 마크다운 task — `- [ ] 항목` / `1. [ ] 항목` / `[ ] 항목` 모두 처리
+        // LLM이 답변에 마크다운 체크박스로 항목을 적기 때문에 [ ]는 화면에 안 보이게 제거하고 진짜 체크박스로 변환
+        const taskMatch = trimmed.match(/^(?:(\d+)\.\s+)?(?:[-*•]\s+)?\[\s*[xX ]?\s*\]\s+(.*)$/);
+        if (taskMatch) {
+          const num = taskMatch[1];
+          const key = `t${i}`;
+          const isChecked = !!checked[key];
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => toggle(key)}
+              className={`w-full flex gap-3 items-start mt-2.5 first:mt-0 text-left py-1 px-2 rounded-lg ${indentClass} ${isHighContrast ? 'hover:bg-zinc-800' : 'hover:bg-slate-50'}`}
+            >
+              <span className={`shrink-0 mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isChecked ? checkboxOn : checkboxOff}`}>
+                {isChecked && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+              </span>
+              <span className={`flex-1 ${isChecked ? doneColor : titleColor}`}>
+                {num && <span className={`mr-1.5 font-bold ${accent}`}>{num}.</span>}
+                {renderInline(taskMatch[2], `${i}t`)}
+              </span>
+            </button>
+          );
+        }
+
+        // 일반 번호 리스트 (체크박스 X) → 체크박스로 (LLM이 [ ]없이 1. 식으로 줄 때도)
         const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
         if (numMatch) {
           const key = `n${i}`;
@@ -150,42 +181,37 @@ function ChecklistRenderer({
               key={i}
               type="button"
               onClick={() => toggle(key)}
-              className="w-full flex gap-3 items-start mt-2 first:mt-0 text-left"
+              className={`w-full flex gap-3 items-start mt-2.5 first:mt-0 text-left py-1 px-2 rounded-lg ${indentClass} ${isHighContrast ? 'hover:bg-zinc-800' : 'hover:bg-slate-50'}`}
             >
               <span className={`shrink-0 mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isChecked ? checkboxOn : checkboxOff}`}>
                 {isChecked && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
               </span>
               <span className={`flex-1 ${isChecked ? doneColor : titleColor}`}>
-                <span className={`mr-1 font-bold ${accent}`}>{numMatch[1]}.</span>
+                <span className={`mr-1.5 font-bold ${accent}`}>{numMatch[1]}.</span>
                 {renderInline(numMatch[2], `${i}n`)}
               </span>
             </button>
           );
         }
 
-        // 불릿 리스트 → 체크박스 (들여쓰기)
+        // 불릿 리스트 (체크박스 X) — 보통 헤더 아래 보충 설명
         if (/^[-*•]\s/.test(trimmed)) {
-          const key = `l${i}`;
-          const isChecked = !!checked[key];
           return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => toggle(key)}
-              className="w-full flex gap-3 items-start mt-1.5 first:mt-0 text-left pl-4"
-            >
-              <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isChecked ? checkboxOn : checkboxOff}`}>
-                {isChecked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+            <div key={i} className={`flex gap-2 mt-1.5 first:mt-0 ${indentClass} ${sizeRich}`}>
+              <span className={`shrink-0 ${accent}`}>•</span>
+              <span className={`flex-1 ${isHighContrast ? 'text-zinc-300' : 'text-slate-700'}`}>
+                {renderInline(trimmed.replace(/^[-*•]\s+/, ''), `${i}b`)}
               </span>
-              <span className={`flex-1 text-sm ${isChecked ? doneColor : titleColor}`}>
-                {renderInline(trimmed.replace(/^[-*•]\s/, ''), `${i}l`)}
-              </span>
-            </button>
+            </div>
           );
         }
 
         // 일반 텍스트
-        return <div key={i} className="mt-1.5 first:mt-0">{renderInline(trimmed, `${i}p`)}</div>;
+        return (
+          <div key={i} className={`mt-2 first:mt-0 ${indentClass} ${isHighContrast ? 'text-zinc-200' : 'text-slate-700'}`}>
+            {renderInline(trimmed, `${i}p`)}
+          </div>
+        );
       })}
     </>
   );
@@ -609,34 +635,51 @@ export default function ChatPage() {
   const renderRich = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, i) => {
-      const trimmed = line.trimEnd();
-      if (!trimmed.trim()) return <div key={i} className="h-2" />;
-      const hMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (!line.trim()) return <div key={i} className="h-3" />;
+
+      const indentSpaces = (line.match(/^(\s*)/)?.[1] ?? '').replace(/\t/g, '  ').length;
+      const indentLevel = Math.min(Math.floor(indentSpaces / 2), 3);
+      const indentClass = ['pl-0', 'pl-5', 'pl-10', 'pl-14'][indentLevel];
+
+      const trimmed = line.trim();
+
+      // [ ] 마크 제거 — detail 텍스트도 LLM이 가끔 task list로 답함
+      const cleaned = trimmed.replace(/^(\d+\.\s+|[-*•]\s+)?\[\s*[xX ]?\s*\]\s*/, '$1');
+
+      // 헤더
+      const hMatch = cleaned.match(/^(#{1,6})\s+(.*)$/);
       if (hMatch) {
         const level = hMatch[1].length;
         const cls = level <= 2
-          ? `block mt-4 first:mt-0 font-bold ${isLargeFont ? 'text-xl' : 'text-lg'} ${isHighContrast ? 'text-yellow-400' : 'text-blue-700'}`
-          : `block mt-3 first:mt-0 font-bold ${sizeRich}`;
+          ? `block mt-5 first:mt-0 pb-2 font-bold border-b ${isHighContrast ? 'border-yellow-400/40 text-yellow-400' : 'border-blue-200 text-blue-700'} ${isLargeFont ? 'text-2xl' : 'text-xl'}`
+          : `block mt-4 first:mt-0 font-bold ${sizeRich} ${isHighContrast ? 'text-yellow-300' : 'text-slate-800'}`;
         return <div key={i} className={cls}>{renderInline(hMatch[2], `${i}h`)}</div>;
       }
-      const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+      // 번호 리스트
+      const numMatch = cleaned.match(/^(\d+)\.\s+(.*)$/);
       if (numMatch) {
         return (
-          <div key={i} className="flex gap-2 mt-1.5 first:mt-0">
+          <div key={i} className={`flex gap-2 mt-2 first:mt-0 ${indentClass}`}>
             <span className={`shrink-0 font-bold ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>{numMatch[1]}.</span>
-            <span className="flex-1">{renderInline(numMatch[2], `${i}n`)}</span>
+            <span className={`flex-1 ${isHighContrast ? 'text-zinc-200' : 'text-slate-700'}`}>{renderInline(numMatch[2], `${i}n`)}</span>
           </div>
         );
       }
-      if (/^[-*•]\s/.test(trimmed)) {
+      // 불릿
+      if (/^[-*•]\s/.test(cleaned)) {
         return (
-          <div key={i} className="flex gap-2 mt-1.5 first:mt-0">
+          <div key={i} className={`flex gap-2 mt-1.5 first:mt-0 ${indentClass}`}>
             <span className={`shrink-0 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>•</span>
-            <span className="flex-1">{renderInline(trimmed.replace(/^[-*•]\s/, ''), `${i}l`)}</span>
+            <span className={`flex-1 ${isHighContrast ? 'text-zinc-300' : 'text-slate-700'}`}>{renderInline(cleaned.replace(/^[-*•]\s+/, ''), `${i}l`)}</span>
           </div>
         );
       }
-      return <div key={i} className="mt-1.5 first:mt-0">{renderInline(trimmed, `${i}p`)}</div>;
+      // 일반 문단
+      return (
+        <div key={i} className={`mt-2 first:mt-0 ${indentClass} ${isHighContrast ? 'text-zinc-200' : 'text-slate-700'}`}>
+          {renderInline(cleaned, `${i}p`)}
+        </div>
+      );
     });
   };
 
