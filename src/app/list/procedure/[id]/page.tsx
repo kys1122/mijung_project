@@ -217,31 +217,9 @@ const ProcedureScreen: React.FC = () => {
           </h1>
         </div>
 
-        {/* 자세한 안내 */}
-        {(llmDetail || llmDetailLoading) && (
-          <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
-                <Info className="w-4 h-4" />
-              </span>
-              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
-                {lang === 'en' ? 'Detailed guide' : '민원 자세히 보기'}
-              </h2>
-            </div>
-            {llmDetailLoading && !llmDetail ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-line-base border-t-brand-500 rounded-full animate-spin" />
-                <span className={subtleColor}>{lang === 'en' ? 'Loading detailed guide...' : '자세한 안내를 불러오는 중...'}</span>
-              </div>
-            ) : (
-              <RichTextRenderer text={llmDetail} isHighContrast={isHighContrast} isLargeFont={isLargeFont} />
-            )}
-          </div>
-        )}
-
-        {/* 한눈에 보기 — 정부24식 정렬된 라벨 */}
+        {/* 한눈에 보기 — 정부24식 정렬된 라벨 (사용자가 먼저 보고 판단) */}
         {(info.overview || info.eligibility || info.ministry || info.fee) && (
-          <div className={`mt-4 p-5 sm:p-6 ${cardCls} ui-enter`}>
+          <div className={`mt-6 p-5 sm:p-6 ${cardCls} ui-enter`}>
             <h2 className={`font-bold ${titleColor} ${sizeStepTitle} mb-1`}>
               {lang === 'en' ? 'At a glance' : '한눈에 보기'}
             </h2>
@@ -291,6 +269,28 @@ const ProcedureScreen: React.FC = () => {
                 </button>
               );
             })()}
+          </div>
+        )}
+
+        {/* 자세한 안내 — 사용자가 한눈에 보기 후 더 알아보고 싶을 때 */}
+        {(llmDetail || llmDetailLoading) && (
+          <div className={`mt-4 p-5 sm:p-6 ${cardCls} ui-enter`}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`inline-flex w-8 h-8 rounded-xl ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600'} items-center justify-center`}>
+                <Info className="w-4 h-4" />
+              </span>
+              <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>
+                {lang === 'en' ? 'Detailed guide' : '민원 자세히 보기'}
+              </h2>
+            </div>
+            {llmDetailLoading && !llmDetail ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-line-base border-t-brand-500 rounded-full animate-spin" />
+                <span className={subtleColor}>{lang === 'en' ? 'Loading detailed guide...' : '자세한 안내를 불러오는 중...'}</span>
+              </div>
+            ) : (
+              <RichTextRenderer text={llmDetail} isHighContrast={isHighContrast} isLargeFont={isLargeFont} />
+            )}
           </div>
         )}
 
