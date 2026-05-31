@@ -10,6 +10,7 @@ import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
 import RichTextRenderer from '../../../components/RichTextRenderer';
+import { normalizeOfficialLink } from '@/lib/url';
 
 const ProcedureScreen: React.FC = () => {
   const router = useRouter();
@@ -266,18 +267,19 @@ const ProcedureScreen: React.FC = () => {
                 </div>
               )}
             </div>
-            {info.official_link && (
-              <button
-                onClick={() => {
-                  const url = info.official_link!.startsWith('http') ? info.official_link! : `https://${info.official_link}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-                className={`mt-4 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-colors ${docsBtn} ${sizeBody}`}
-              >
-                <ScrollText className="w-4 h-4" />
-                {lang === 'en' ? 'Official page' : '공식 안내'}
-              </button>
-            )}
+            {(() => {
+              const officialUrl = normalizeOfficialLink(info.official_link);
+              if (!officialUrl) return null;
+              return (
+                <button
+                  onClick={() => window.open(officialUrl, '_blank', 'noopener,noreferrer')}
+                  className={`mt-4 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-colors ${docsBtn} ${sizeBody}`}
+                >
+                  <ScrollText className="w-4 h-4" />
+                  {lang === 'en' ? 'Official page' : '공식 안내'}
+                </button>
+              );
+            })()}
           </div>
         )}
 

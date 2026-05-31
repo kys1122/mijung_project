@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
+import { isLikelyUrl, trimTrailingPunct } from '@/lib/url';
 
 // LLM 마크다운 텍스트를 가독성+시각적 강조 있게 렌더
 // - 헤더에 색 배경 박스
@@ -44,19 +45,25 @@ export default function RichTextRenderer({
       if (m[1]) {
         // 마크다운 링크
         const label = m[2];
-        const url = m[3].startsWith('http') ? m[3] : `https://${m[3]}`;
-        tokens.push(
-          <a
-            key={`${keyPrefix}-l${tokenKey++}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`inline-flex items-center gap-0.5 font-semibold underline underline-offset-2 ${accentText} hover:opacity-80`}
-          >
-            {label}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        );
+        const rawUrl = trimTrailingPunct(m[3]);
+        if (!isLikelyUrl(rawUrl)) {
+          // URL 자리가 깨져있으면 일반 텍스트로
+          tokens.push(<span key={`${keyPrefix}-bl${tokenKey++}`}>{m[0]}</span>);
+        } else {
+          const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+          tokens.push(
+            <a
+              key={`${keyPrefix}-l${tokenKey++}`}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-0.5 font-semibold underline underline-offset-2 ${accentText} hover:opacity-80`}
+            >
+              {label}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          );
+        }
       } else if (m[4]) {
         // **굵게**
         tokens.push(
@@ -69,19 +76,26 @@ export default function RichTextRenderer({
         );
       } else if (m[5]) {
         // bare URL
-        const url = m[5].startsWith('http') ? m[5] : `https://${m[5]}`;
-        tokens.push(
-          <a
-            key={`${keyPrefix}-u${tokenKey++}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`inline-flex items-center gap-0.5 font-medium underline underline-offset-2 ${accentText} hover:opacity-80 break-all`}
-          >
-            {m[5]}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        );
+        const cleaned = trimTrailingPunct(m[5]);
+        if (!isLikelyUrl(cleaned)) {
+          tokens.push(<span key={`${keyPrefix}-bu${tokenKey++}`}>{m[5]}</span>);
+        } else {
+          const url = cleaned.startsWith('http') ? cleaned : `https://${cleaned}`;
+          const trailing = m[5].slice(cleaned.length); // 매칭에 포함됐던 문장부호 복원
+          tokens.push(
+            <a
+              key={`${keyPrefix}-u${tokenKey++}`}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-0.5 font-medium underline underline-offset-2 ${accentText} hover:opacity-80 break-all`}
+            >
+              {cleaned}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          );
+          if (trailing) tokens.push(<span key={`${keyPrefix}-tp${tokenKey++}`}>{trailing}</span>);
+        }
       }
       lastIdx = m.index + m[0].length;
     }

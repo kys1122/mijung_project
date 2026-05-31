@@ -20,6 +20,7 @@ import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { normalizeOfficialLink } from '@/lib/url';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type Options = { user_types: string[]; age_groups: string[]; categories: string[] };
@@ -897,7 +898,7 @@ export default function ChatPage() {
                     <div className="flex flex-col gap-2">
                       {m.services.map((svc, idx) => {
                         const subTitle = svc.official_name && svc.official_name !== svc.service_name ? svc.official_name : undefined;
-                        const link = svc.official_link || svc.url;
+                        const link = normalizeOfficialLink(svc.official_link || svc.url);
                         const targetChips = (svc.targets ?? '').split(/[,，·•]/).map(s => s.trim()).filter(Boolean).slice(0, 4);
                         return (
                           <button
@@ -926,8 +927,7 @@ export default function ChatPage() {
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const url = link.startsWith('http') ? link : `https://${link}`;
-                                    window.open(url, '_blank', 'noopener,noreferrer');
+                                    window.open(link, '_blank', 'noopener,noreferrer');
                                   }}
                                   className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold cursor-pointer ${isHighContrast ? 'text-yellow-400 hover:text-yellow-300' : 'text-blue-600 hover:text-blue-700'}`}
                                 >
@@ -992,26 +992,31 @@ export default function ChatPage() {
                       isLargeFont={isLargeFont}
                     />
                   </div>
-                  {(info.official_link || info.online_apply_url || info.fee) && (
-                    <div className={`rounded-2xl border p-4 ${isHighContrast ? 'bg-zinc-900 border-zinc-700' : 'bg-blue-50 border-blue-100'}`}>
-                      <p className={`text-sm font-bold mb-2 ${titleColor}`}>🔗 {lang === 'en' ? 'Useful links' : '유용한 링크'}</p>
-                      <div className="flex flex-col gap-1.5 text-sm">
-                        {info.official_link && (
-                          <a href={info.official_link.startsWith('http') ? info.official_link : `https://${info.official_link}`} target="_blank" rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                            🔗 {lang === 'en' ? 'Official' : '공식 사이트'} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                        {info.online_apply_url && (
-                          <a href={info.online_apply_url.startsWith('http') ? info.online_apply_url : `https://${info.online_apply_url}`} target="_blank" rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                            💻 {lang === 'en' ? 'Apply online' : '온라인 신청'} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                        {info.fee && <p className={subtleColor}>💰 {lang === 'en' ? 'Fee' : '수수료'}: {info.fee}</p>}
+                  {(() => {
+                    const officialUrl = normalizeOfficialLink(info.official_link);
+                    const onlineUrl = normalizeOfficialLink(info.online_apply_url);
+                    if (!officialUrl && !onlineUrl && !info.fee) return null;
+                    return (
+                      <div className={`rounded-2xl border p-4 ${isHighContrast ? 'bg-zinc-900 border-zinc-700' : 'bg-blue-50 border-blue-100'}`}>
+                        <p className={`text-sm font-bold mb-2 ${titleColor}`}>🔗 {lang === 'en' ? 'Useful links' : '유용한 링크'}</p>
+                        <div className="flex flex-col gap-1.5 text-sm">
+                          {officialUrl && (
+                            <a href={officialUrl} target="_blank" rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
+                              🔗 {lang === 'en' ? 'Official' : '공식 사이트'} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          {onlineUrl && (
+                            <a href={onlineUrl} target="_blank" rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
+                              💻 {lang === 'en' ? 'Apply online' : '온라인 신청'} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          {info.fee && <p className={subtleColor}>💰 {lang === 'en' ? 'Fee' : '수수료'}: {info.fee}</p>}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             }
