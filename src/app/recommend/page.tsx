@@ -149,20 +149,22 @@ const RecommendScreen: React.FC = () => {
       })
     : all;
 
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
-  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card-interactive';
+  const cardStaticCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-ink-2';
+  const metaColor = isHighContrast ? 'text-zinc-500' : 'text-ink-4';
   const summaryBox = isHighContrast
-    ? 'bg-zinc-900 border-yellow-400 text-white'
-    : 'bg-blue-50 border-blue-100 text-slate-700';
+    ? 'bg-zinc-900 border border-yellow-400 text-white'
+    : 'bg-brand-50 border border-brand-100 text-ink-2';
   const inputBg = isHighContrast
     ? 'bg-zinc-900 border-zinc-700 text-white placeholder-zinc-500'
-    : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
+    : 'bg-surface border-line-base text-ink-1 placeholder:text-ink-4';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
-    : 'bg-blue-600 hover:bg-blue-700 text-white';
+    : 'bg-brand-600 hover:bg-brand-700 text-white shadow-[0_4px_12px_rgba(37,99,235,0.22)]';
 
   const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeSection = isLargeFont ? 'text-xl' : 'text-lg';
@@ -244,7 +246,7 @@ const RecommendScreen: React.FC = () => {
             </div>
 
             {searchHits.length === 0 ? (
-              <div className={`mt-3 rounded-2xl border ${cardBg} p-6 text-center`}>
+              <div className={`mt-3 ${cardStaticCls} p-6 text-center`}>
                 <p className={`${titleColor} ${sizeCardTitle}`}>
                   {lang === 'en' ? 'No matches found' : '검색 결과가 없어요'}
                 </p>
@@ -257,7 +259,7 @@ const RecommendScreen: React.FC = () => {
                 {searchHits.map((item) => (
                   <article
                     key={item.id}
-                    className={`rounded-2xl border shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col ${cardBg}`}
+                    className={`${cardCls} p-5 flex flex-col`}
                   >
                     <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{item.title}</h3>
                     {item.description && (
@@ -295,7 +297,7 @@ const RecommendScreen: React.FC = () => {
               {recs.map((item) => (
                 <article
                   key={item.id}
-                  className={`rounded-2xl border shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col ${cardBg}`}
+                  className={`${cardCls} p-5 flex flex-col`}
                 >
                   <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{item.title}</h3>
                   {item.description && (
@@ -333,11 +335,11 @@ const RecommendScreen: React.FC = () => {
 
           {allLoading ? (
             <div className="mt-8 flex flex-col items-center gap-3 text-slate-500">
-              <div className="w-7 h-7 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="w-7 h-7 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin"></div>
               <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
             </div>
           ) : filteredAll.length === 0 ? (
-            <div className={`mt-4 rounded-2xl border ${cardBg} p-6 text-center`}>
+            <div className={`mt-4 ${cardStaticCls} p-6 text-center`}>
               <p className={`${titleColor} ${sizeCardTitle}`}>
                 {lang === 'en' ? 'No services match' : '검색 결과가 없어요'}
               </p>
@@ -348,7 +350,7 @@ const RecommendScreen: React.FC = () => {
                 <button
                   key={s.id}
                   onClick={() => navigateToService(s.id)}
-                  className={`group rounded-2xl border shadow-sm hover:shadow-md transition-all p-4 text-left flex flex-col ${cardBg}`}
+                  className={`group ${cardCls} p-4 text-left flex flex-col`}
                 >
                   <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{s.name}</h3>
                   {(s.ministry || s.department) && (

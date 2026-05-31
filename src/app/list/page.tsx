@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquare, PenSquare, Trash2 } from "lucide-react";
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
@@ -38,7 +39,6 @@ const ListScreen: React.FC = () => {
   const router = useRouter();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unauthorized, setUnauthorized] = useState(false);
 
   const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
   const [isHighContrast, setIsHighContrast] = useState(false);
@@ -80,6 +80,8 @@ const ListScreen: React.FC = () => {
 
   useEffect(() => { loadSessions(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  const handleOpen = (id: number) => router.push(`/chat?session=${id}`);
+
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(lang === 'en' ? 'Delete this conversation?' : '이 대화를 삭제할까요?')) return;
@@ -89,105 +91,97 @@ const ListScreen: React.FC = () => {
     } catch (e) { console.error('삭제 실패:', e); }
   };
 
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const cardBg = isHighContrast ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-slate-200/70';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
-  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
+  // 고대비 모드 분기
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card-interactive';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const metaColor = isHighContrast ? 'text-zinc-500' : 'text-ink-4';
+  const iconBg = isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-brand-50 text-brand-600';
   const ctaBtn = isHighContrast
     ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
-    : 'bg-blue-600 hover:bg-blue-700 text-white';
+    : 'bg-brand-600 hover:bg-brand-700 text-white shadow-[0_4px_12px_rgba(37,99,235,0.22)]';
 
-  const sizeTitle = isLargeFont ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
   const sizeSub = isLargeFont ? 'text-lg' : 'text-base';
-  const sizeCardTitle = isLargeFont ? 'text-lg' : 'text-base';
+  const sizeCardTitle = isLargeFont ? 'text-base sm:text-lg' : 'text-sm sm:text-base';
 
   return (
     <div className={`min-h-screen ${pageBg}`}>
-      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
-        <div className="flex items-start justify-end">
-          <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
-          />
-        </div>
-
-        <div className="mt-2">
-          <h1 className={`font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
-            {lang === 'en' ? 'My Questions' : '내 질문 기록'}
-          </h1>
-          <p className={`mt-1 ${subtleColor} ${sizeSub}`}>
-            {lang === 'en' ? 'Past conversations with the chatbot' : '챗봇과 나눈 대화를 다시 볼 수 있어요'}
-          </p>
-        </div>
+      <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pb-28">
+        <PageHeader
+          title={lang === 'en' ? 'My Questions' : '내 질문 기록'}
+          subtitle={lang === 'en' ? 'Past conversations with the chatbot' : '챗봇과 나눈 대화를 다시 볼 수 있어요'}
+          right={
+            <TopSettings
+              lang={lang} setLang={handleLang}
+              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            />
+          }
+        />
 
         <button
           onClick={() => router.push('/chat')}
-          className={`mt-5 w-full py-3.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm ${ctaBtn} ${sizeSub}`}
+          className={`mt-6 w-full py-3.5 rounded-2xl font-semibold transition-all flex items-center justify-center gap-1.5 ${ctaBtn} ${sizeSub}`}
         >
           <PenSquare className="w-5 h-5" />
           {lang === 'en' ? 'New chat' : '새 대화 시작'}
         </button>
 
         {loading ? (
-          <div className="mt-12 flex flex-col items-center gap-3 text-slate-500">
-            <div className="w-8 h-8 border-3 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="mt-16 flex flex-col items-center gap-3 text-ink-3">
+            <div className="w-8 h-8 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin" />
             <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
           </div>
-        ) : unauthorized ? (
-          <div className={`mt-12 rounded-2xl border ${cardBg} p-8 text-center`}>
-            <p className={`${titleColor} ${sizeCardTitle}`}>
-              {lang === 'en' ? 'Login required' : '로그인이 필요해요'}
-            </p>
-            <button
-              onClick={() => router.push('/user/login')}
-              className={`mt-5 w-full py-3.5 rounded-xl font-semibold transition-colors ${ctaBtn}`}
-            >
-              {lang === 'en' ? 'Login' : '로그인하러 가기'}
-            </button>
-          </div>
         ) : sessions.length === 0 ? (
-          <div className={`mt-8 rounded-2xl border ${cardBg} p-8 text-center`}>
-            <div className="mx-auto w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
-              <MessageSquare className="w-7 h-7 text-blue-500" />
+          <div className={`mt-10 p-8 text-center ui-enter ${cardCls.replace('ui-card-interactive','ui-card')}`}>
+            <div className={`mx-auto w-16 h-16 rounded-full ${iconBg} flex items-center justify-center`}>
+              <MessageSquare className="w-7 h-7" />
             </div>
-            <p className={`mt-4 ${titleColor} ${sizeCardTitle}`}>
+            <p className={`mt-5 text-lg font-semibold ${titleColor}`}>
               {lang === 'en' ? 'No conversations yet' : '아직 대화가 없어요'}
             </p>
-            <p className={`mt-1 ${subtleColor} text-sm`}>
+            <p className={`mt-1.5 text-sm ${subtleColor}`}>
               {lang === 'en' ? 'Ask the chatbot about any civil service' : '챗봇에게 민원에 대해 물어보세요'}
             </p>
           </div>
         ) : (
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-6 flex flex-col gap-3 ui-enter">
             {sessions.map((s) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => router.push(`/chat?session=${s.id}`)}
-                className={`group rounded-2xl border shadow-sm hover:shadow-md transition-all p-4 text-left flex items-start gap-3 ${cardBg}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpen(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOpen(s.id);
+                  }
+                }}
+                className={`group ${cardCls} p-4 text-left flex items-start gap-3 cursor-pointer`}
               >
-                <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-blue-50'}`}>
-                  <MessageSquare className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <div className={`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center ${iconBg}`}>
+                  <MessageSquare className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`font-semibold truncate ${titleColor} ${sizeCardTitle}`}>{s.title}</p>
                   <div className="mt-1 flex items-center gap-2 text-xs">
-                    <span className={subtleColor}>{timeAgo(s.updated_at, lang)}</span>
-                    <span className={subtleColor}>·</span>
-                    <span className={subtleColor}>
+                    <span className={metaColor}>{timeAgo(s.updated_at, lang)}</span>
+                    <span className={metaColor}>·</span>
+                    <span className={metaColor}>
                       {s.message_count} {lang === 'en' ? 'messages' : '개 메시지'}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={(e) => handleDelete(s.id, e)}
-                  className={`shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-slate-500 hover:text-red-500 hover:bg-red-50'}`}
+                  className={`shrink-0 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-ink-4 hover:text-danger hover:bg-danger/10'}`}
                   aria-label={lang === 'en' ? 'Delete conversation' : '대화 삭제'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}
