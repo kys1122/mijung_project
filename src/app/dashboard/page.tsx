@@ -46,14 +46,17 @@ const DashboardScreen: React.FC = () => {
 
   useEffect(() => {
     if (!getAccessToken()) {
-      setUnauthorized(true);
-      setLoading(false);
+      // 비로그인 — 로그인 페이지로 자동 이동
+      router.replace('/user/login?return=/dashboard');
       return;
     }
     (async () => {
       try {
         const res = await apiFetch('/api/my-services');
-        if (res.status === 401) { setUnauthorized(true); return; }
+        if (res.status === 401) {
+          router.replace('/user/login?return=/dashboard');
+          return;
+        }
         const data = await res.json();
         setServices(data.services ?? []);
       } catch (err) {
@@ -62,7 +65,7 @@ const DashboardScreen: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [router]);
 
   const goToService = (svc: MyService) => {
     const path = svc.last_step === 'required_docs'

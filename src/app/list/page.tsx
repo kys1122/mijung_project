@@ -59,10 +59,16 @@ const ListScreen: React.FC = () => {
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const loadSessions = async () => {
-    if (!getAccessToken()) { setUnauthorized(true); setLoading(false); return; }
+    if (!getAccessToken()) {
+      router.replace('/user/login?return=/list');
+      return;
+    }
     try {
       const res = await apiFetch('/api/chat-sessions');
-      if (res.status === 401) { setUnauthorized(true); return; }
+      if (res.status === 401) {
+        router.replace('/user/login?return=/list');
+        return;
+      }
       const data = await res.json();
       setSessions(data.sessions ?? []);
     } catch (err) {
@@ -72,7 +78,7 @@ const ListScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadSessions(); }, []);
+  useEffect(() => { loadSessions(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();

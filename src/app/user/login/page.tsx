@@ -3,10 +3,15 @@
 import React, { useState } from "react"
 import Link from "next/link";
 import { Eye, EyeOff, Check } from 'lucide-react';
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
+const ALLOWED_RETURN = new Set(['/chat', '/dashboard', '/list', '/recommend', '/']);
 
 const LoginScreen: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnParam = searchParams.get('return');
+  const returnTo = returnParam && ALLOWED_RETURN.has(returnParam) ? returnParam : '/chat';
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,13 +34,13 @@ const LoginScreen: React.FC = () => {
       if (result.success) {
         localStorage.setItem('accessToken', result.data.accessToken);
         localStorage.setItem('refreshToken', result.data.refreshToken);
-        router.push("/chat");
+        router.push(returnTo);
       } else {
-        setErrorMsg(result.message ?? "로그인에 실패했습니다.");
+        setErrorMsg(result.message ?? "이메일 또는 비밀번호를 다시 확인해주세요.");
       }
     } catch (error) {
       console.error("로그인 중 에러 발생 : ", error);
-      setErrorMsg("네트워크 오류가 발생했습니다.");
+      setErrorMsg("연결이 끊겼어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
