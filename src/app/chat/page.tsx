@@ -616,28 +616,28 @@ export default function ChatPage() {
   const stopRec = () => { const r = mediaRecorderRef.current; if (r && r.state !== 'inactive') r.stop(); setIsRecording(false); };
 
   // 디자인 토큰
-  const pageBg = isHighContrast ? 'bg-black' : 'bg-slate-50';
-  const headerBorder = isHighContrast ? 'border-zinc-700' : 'border-slate-200/70';
-  const titleColor = isHighContrast ? 'text-white' : 'text-slate-900';
-  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-slate-600';
-  const descColor = isHighContrast ? 'text-zinc-300' : 'text-slate-600';
-  const inputBg = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-900';
-  const userBubble = isHighContrast ? 'bg-yellow-400 text-black' : 'bg-blue-600 text-white';
-  const botBubble = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-slate-200 text-slate-800';
-  const sendBtn = isHighContrast ? 'bg-yellow-400 hover:bg-yellow-300 text-black' : 'bg-blue-600 hover:bg-blue-700 text-white';
-  const newChatBtn = isHighContrast ? 'text-yellow-400 hover:bg-zinc-800' : 'text-blue-600 hover:bg-blue-50';
+  const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
+  const headerBorder = isHighContrast ? 'border-zinc-700' : 'border-line-soft';
+  const titleColor = isHighContrast ? 'text-white' : 'text-ink-1';
+  const subtleColor = isHighContrast ? 'text-zinc-400' : 'text-ink-3';
+  const descColor = isHighContrast ? 'text-zinc-300' : 'text-ink-2';
+  const inputBg = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-surface border-line-base text-ink-1';
+  const userBubble = isHighContrast ? 'bg-yellow-400 text-black' : 'bg-brand-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.18)]';
+  const botBubble = isHighContrast ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-surface border-line-soft text-ink-2';
+  const sendBtn = isHighContrast ? 'bg-yellow-400 hover:bg-yellow-300 text-black' : 'bg-brand-600 hover:bg-brand-700 text-white shadow-[0_4px_12px_rgba(37,99,235,0.22)]';
+  const newChatBtn = isHighContrast ? 'text-yellow-400 hover:bg-zinc-800' : 'text-brand-600 hover:bg-brand-50';
   const micBtn = isRecording
-    ? 'bg-red-500 hover:bg-red-600 text-white'
-    : (isHighContrast ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-white border border-slate-200 hover:bg-slate-100 text-blue-600');
+    ? 'bg-danger hover:opacity-90 text-white shadow-[0_4px_12px_rgba(220,38,38,0.25)]'
+    : (isHighContrast ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400' : 'bg-surface border border-line-base hover:bg-surface-muted text-brand-600');
   const optionCard = isHighContrast
     ? 'bg-zinc-900 border-zinc-700 hover:border-yellow-400 hover:bg-zinc-800'
-    : 'bg-white border-slate-200 hover:border-blue-500 hover:bg-blue-50';
+    : 'bg-surface border-line-soft hover:border-brand-500 hover:bg-brand-50';
   const serviceCard = isHighContrast
     ? 'bg-zinc-900 border-yellow-400 hover:bg-zinc-800'
-    : 'bg-white border-blue-200 hover:bg-blue-50';
+    : 'bg-surface border-brand-100 hover:bg-brand-50 hover:border-brand-200';
   const exampleBtn = isHighContrast
     ? 'bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200'
-    : 'bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-700';
+    : 'bg-surface-muted border border-line-soft hover:bg-surface-soft text-ink-2';
 
   const sizeBubble = isLargeFont ? 'text-lg' : 'text-base';
   const sizeRich = isLargeFont ? 'text-lg' : 'text-base';
