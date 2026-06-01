@@ -6,7 +6,8 @@ import { ChevronLeft, ChevronRight, Mic, Sparkles } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as QA_STRINGS, type QaStrings } from '../lib/strings/qa';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
 
 const ALLOWED_NEXT = new Set(['/chat', '/recommend', '/list', '/dashboard']);
 
@@ -25,9 +26,9 @@ export default function QaPage() {
   const nextParam = searchParams.get('next');
   const nextPath = nextParam && ALLOWED_NEXT.has(nextParam) ? nextParam : '/recommend';
 
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const [lang, setLang] = useAppLang();
 
   const [rootQuestions, setRootQuestions] = useState<Question[]>([]);
   const [history, setHistory] = useState<Array<{ q: Question; answer: string }>>([]);
@@ -40,17 +41,6 @@ export default function QaPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
 
   const t = useTranslations<QaStrings>('qa', QA_STRINGS as unknown as { ko: QaStrings; en: QaStrings }, lang);
 
@@ -259,9 +249,9 @@ export default function QaPage() {
             <div />
           )}
           <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            lang={lang} setLang={setLang}
+            isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
           />
         </header>
 

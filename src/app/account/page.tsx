@@ -9,7 +9,8 @@ import PageHeader from "../components/PageHeader";
 import TopSettings from "../components/TopSettings";
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
 
 type Me = { id: number; email: string; name: string };
 type Delegation = {
@@ -41,20 +42,9 @@ export default function AccountScreen() {
   const [inviteLoading, setInviteLoading] = useState(false);
 
   // 접근성 토글
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (val: LangCode) => { setLang(val); localStorage.setItem('app_lang', val); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
   const tSet = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const reload = async () => {
@@ -106,16 +96,18 @@ export default function AccountScreen() {
       });
       const data = await res.json();
       if (data?.success) {
-        setInviteMsg({ kind: 'ok', text: '초대를 보냈어요. 상대방이 수락하면 활성 상태가 돼요.' });
+        setInviteMsg({ kind: 'ok', text: lang === 'en'
+          ? "Invitation sent. They'll be active once accepted."
+          : '초대를 보냈어요. 상대방이 수락하면 활성 상태가 돼요.' });
         setInviteEmail('');
         setInviteRelation('');
         await reload();
       } else {
-        setInviteMsg({ kind: 'err', text: data?.message ?? '초대에 실패했어요.' });
+        setInviteMsg({ kind: 'err', text: data?.message ?? (lang === 'en' ? 'Invitation failed.' : '초대에 실패했어요.') });
       }
     } catch (e) {
       console.error('초대 실패:', e);
-      setInviteMsg({ kind: 'err', text: '연결이 끊겼어요. 잠시 후 다시 시도해 주세요.' });
+      setInviteMsg({ kind: 'err', text: lang === 'en' ? 'Connection lost. Try again shortly.' : '연결이 끊겼어요. 잠시 후 다시 시도해 주세요.' });
     } finally {
       setInviteLoading(false);
     }
@@ -130,7 +122,7 @@ export default function AccountScreen() {
   };
 
   const removeRelation = async (id: number) => {
-    if (!confirm('이 관계를 삭제할까요?')) return;
+    if (!confirm(lang === 'en' ? 'Remove this relationship?' : '이 관계를 삭제할까요?')) return;
     await apiFetch(`/api/delegations/${id}`, { method: 'DELETE' });
     await reload();
   };
@@ -141,13 +133,13 @@ export default function AccountScreen() {
     <div className="min-h-screen bg-surface-page pb-28">
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8">
         <PageHeader
-          title="내 계정"
-          subtitle="프로필과 가족 공유를 관리해요"
+          title={lang === 'en' ? 'My Account' : '내 계정'}
+          subtitle={lang === 'en' ? 'Manage profile and family sharing' : '프로필과 가족 공유를 관리해요'}
           right={
             <TopSettings
-              lang={lang} setLang={handleLang}
-              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-              isLargeFont={isLargeFont} setIsLargeFont={handleFont}
+              lang={lang} setLang={setLang}
+              isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont}
               t={tSet}
             />
           }
@@ -190,8 +182,8 @@ export default function AccountScreen() {
                 <Settings className="w-5 h-5 text-ink-2" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-ink-1">계정 설정</p>
-                <p className="text-sm text-ink-3 mt-0.5">이름·비밀번호 변경, 회원 탈퇴</p>
+                <p className="font-semibold text-ink-1">{lang === 'en' ? 'Account settings' : '계정 설정'}</p>
+                <p className="text-sm text-ink-3 mt-0.5">{lang === 'en' ? 'Change name, password, or delete account' : '이름·비밀번호 변경, 회원 탈퇴'}</p>
               </div>
               <span className="text-ink-4 text-lg">›</span>
             </button>
@@ -199,7 +191,7 @@ export default function AccountScreen() {
             {/* 받은 초대 — pending */}
             {pendingForMe.length > 0 && (
               <section className="mt-6 ui-enter" style={{ animationDelay: '60ms' }}>
-                <h2 className="ui-section-label mb-2">받은 초대</h2>
+                <h2 className="ui-section-label mb-2">{lang === 'en' ? 'INVITATIONS RECEIVED' : '받은 초대'}</h2>
                 <div className="flex flex-col gap-2">
                   {pendingForMe.map(d => (
                     <div key={d.id} className="ui-card p-4 flex items-center gap-3">
@@ -208,7 +200,7 @@ export default function AccountScreen() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-ink-1 truncate">{d.name}{d.relation ? ` (${d.relation})` : ''}</p>
-                        <p className="text-xs text-ink-3 truncate">{d.email} 님이 본인 민원을 함께 보자고 초대했어요.</p>
+                        <p className="text-xs text-ink-3 truncate">{lang === 'en' ? `${d.email} invited you to view their services.` : `${d.email} 님이 본인 민원을 함께 보자고 초대했어요.`}</p>
                       </div>
                       <button
                         onClick={() => updateStatus(d.id, 'active')}
@@ -234,10 +226,12 @@ export default function AccountScreen() {
             <section data-tour="account-invite" className="mt-6 ui-card p-5 ui-enter" style={{ animationDelay: '90ms' }}>
               <div className="flex items-center gap-2 mb-3">
                 <UserPlus className="w-5 h-5 text-brand-600" />
-                <h2 className="font-bold text-ink-1">가족·도우미 초대하기</h2>
+                <h2 className="font-bold text-ink-1">{lang === 'en' ? 'Invite family or helper' : '가족·도우미 초대하기'}</h2>
               </div>
               <p className="text-sm text-ink-3 mb-4 leading-relaxed">
-                상대방의 가입 이메일을 적어주세요. 수락하면 내 민원 진행 상황을 같이 볼 수 있어요.
+                {lang === 'en'
+                  ? "Enter their signup email. Once accepted, they can view your service progress with you."
+                  : '상대방의 가입 이메일을 적어주세요. 수락하면 내 민원 진행 상황을 같이 볼 수 있어요.'}
               </p>
               <div className="flex flex-col gap-3">
                 <div>
@@ -251,7 +245,7 @@ export default function AccountScreen() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">관계 (선택)</label>
+                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">{lang === 'en' ? 'Relationship (optional)' : '관계 (선택)'}</label>
                   <input
                     type="text"
                     placeholder="예: 자녀, 배우자, 도우미"
@@ -276,7 +270,9 @@ export default function AccountScreen() {
                   className="ui-btn-primary w-full"
                 >
                   <Mail className="w-4 h-4" />
-                  {inviteLoading ? '초대 보내는 중...' : '초대 보내기'}
+                  {inviteLoading
+                    ? (lang === 'en' ? 'Sending...' : '초대 보내는 중...')
+                    : (lang === 'en' ? 'Send invitation' : '초대 보내기')}
                 </button>
               </div>
             </section>
@@ -284,7 +280,7 @@ export default function AccountScreen() {
             {/* 내가 초대한 사람들 */}
             {asOwner.length > 0 && (
               <section className="mt-6 ui-enter" style={{ animationDelay: '120ms' }}>
-                <h2 className="ui-section-label mb-2">내가 초대한 사람</h2>
+                <h2 className="ui-section-label mb-2">{lang === 'en' ? 'PEOPLE I INVITED' : '내가 초대한 사람'}</h2>
                 <div className="flex flex-col gap-2">
                   {asOwner.map(d => {
                     const meta = STATUS_LABEL[d.status];
@@ -317,7 +313,7 @@ export default function AccountScreen() {
             {/* 내가 대리 중인 사람들 */}
             {asDelegate.filter(d => d.status === 'active').length > 0 && (
               <section className="mt-6 ui-enter" style={{ animationDelay: '150ms' }}>
-                <h2 className="ui-section-label mb-2">내가 도와드리는 사람</h2>
+                <h2 className="ui-section-label mb-2">{lang === 'en' ? "PEOPLE I'M HELPING" : '내가 도와드리는 사람'}</h2>
                 <div className="flex flex-col gap-2">
                   {asDelegate.filter(d => d.status === 'active').map(d => (
                     <div key={d.id} className="ui-card-interactive p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
@@ -326,7 +322,7 @@ export default function AccountScreen() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-ink-1 truncate">{d.name}{d.relation ? ` (${d.relation})` : ''}</p>
-                        <p className="text-xs text-ink-3 truncate">대시보드에서 "{d.name}"으로 전환해서 함께 진행할 수 있어요.</p>
+                        <p className="text-xs text-ink-3 truncate">{lang === 'en' ? `Switch to "${d.name}" in dashboard to help them.` : `대시보드에서 "${d.name}"으로 전환해서 함께 진행할 수 있어요.`}</p>
                       </div>
                       <button
                         onClick={() => removeRelation(d.id)}

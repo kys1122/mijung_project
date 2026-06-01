@@ -62,29 +62,39 @@ const DetailModal = ({ isOpen, onClose, data }: DetailModalProps) => {
                 </div>
               )}
 
-              {detail.requirements && detail.requirements.length > 0 && (
+              {detail.requirements && detail.requirements.length > 0 && (() => {
+                // 콤마 구분된 단일 문자열도 안전하게 split → 항목별 list
+                const items = (detail.requirements as string[])
+                  .flatMap((s) => String(s).split(/[,，、]/g))
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                return (
                 <div>
                   <div className="flex items-center">
                     <FileText className="w-7 h-7 text-black" />
                     <span className="ml-2 text-[26px] font-bold text-black">준비물</span>
                   </div>
-                  <div className="ml-1.5">
-                    {detail.requirements.map((item: string, idx: number) => (
-                      <p key={idx} className="text-[20px] text-[#374151]">{idx + 1}. {item}</p>
+                  <ul className="ml-1.5 mt-1 flex flex-col gap-1.5">
+                    {items.map((item: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-[20px] text-[#374151]">
+                        <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[#0044FF] shrink-0" aria-hidden />
+                        <span className="leading-relaxed">{item}</span>
+                      </li>
                     ))}
-                    
-                    {detail.warning && (
-                      <div className="mt-2 p-3 bg-white border-2 border-[#FFD0D0] rounded-[10px]">
-                        <div className="flex items-center text-[#FF0000]">
-                          <AlertCircle className="w-5 h-5 fill-[#FF0000] text-white" />
-                          <span className="ml-1. font-bold text-[18px]">주의사항</span>
-                        </div>
-                        <p className="p-1.5 text-[17px] text-[#374151] leading-tight">{detail.warning}</p>
+                  </ul>
+
+                  {detail.warning && (
+                    <div className="mt-3 p-3 bg-white border-2 border-[#FFD0D0] rounded-[10px]">
+                      <div className="flex items-center text-[#FF0000]">
+                        <AlertCircle className="w-5 h-5 fill-[#FF0000] text-white" />
+                        <span className="ml-1 font-bold text-[18px]">주의사항</span>
                       </div>
-                    )}
-                  </div>
+                      <p className="p-1.5 text-[17px] text-[#374151] leading-tight">{detail.warning}</p>
+                    </div>
+                  )}
                 </div>
-              )}
+                );
+              })()}
             </>
           ) : (
             <div className="py-10 text-center text-[#374151] text-[20px]">

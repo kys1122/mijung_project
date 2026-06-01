@@ -7,7 +7,8 @@ import DetailModal from "./detailModal";
 import TopSettings from "@/app/components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
+import { type LangCode } from '../../../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../../../lib/app-prefs';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
 import ChecklistRenderer from '../../../components/ChecklistRenderer';
@@ -96,22 +97,9 @@ const DocumentScreen: React.FC = () => {
     setModalOpen(true);
   };
 
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem("app_lang") ?? '';
-    const savedContrast = localStorage.getItem("app_contrast") === "true";
-    const savedFont = localStorage.getItem("app_font") === "true";
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-
-  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem("app_lang", newLang); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem("app_contrast", String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem("app_font", String(val)); };
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
 
   const t = useTranslations<DocumentStrings>('document', DOC_STRINGS as unknown as { ko: DocumentStrings; en: DocumentStrings }, lang);
 
@@ -163,9 +151,9 @@ const DocumentScreen: React.FC = () => {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            lang={lang} setLang={setLang}
+            isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
           />
         </header>
 

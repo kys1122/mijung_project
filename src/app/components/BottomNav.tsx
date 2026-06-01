@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MessageCircle, ListChecks, ClipboardList, User } from "lucide-react";
+import { useAppLang, useAppContrast } from "../lib/app-prefs";
 
 const TABS = [
   { key: 'chat',      ko: '챗봇',     en: 'Chat',     icon: MessageCircle, path: '/chat' },
@@ -14,13 +15,11 @@ const TABS = [
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
-  const [isHighContrast, setIsHighContrast] = useState(false);
+  const [lang] = useAppLang();
+  const [isHighContrast] = useAppContrast();
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (localStorage.getItem('app_lang') === 'en') setLang('en');
-    if (localStorage.getItem('app_contrast') === 'true') setIsHighContrast(true);
     setLoggedIn(!!localStorage.getItem('accessToken'));
   }, []);
 

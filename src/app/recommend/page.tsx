@@ -8,8 +8,10 @@ import BottomNav from '../components/BottomNav';
 import PageHeader from '../components/PageHeader';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
-import { getCategoryMeta, CATEGORY_META, type Category } from '@/lib/category';
+import { type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { getCategoryMeta, CATEGORY_META, categoryLabel, type Category } from '@/lib/category';
+import { useServiceTranslations } from '../lib/use-service-translations';
 
 interface RecItem {
   id: number;
@@ -79,21 +81,9 @@ const RecommendScreen: React.FC = () => {
     })();
   }, []);
 
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (val: LangCode) => { setLang(val); localStorage.setItem('app_lang', val); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
 
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
@@ -144,6 +134,8 @@ const RecommendScreen: React.FC = () => {
     setSearchHits(null);
     setSearchedQuery("");
   };
+
+  const translations = useServiceTranslations(all.map(s => s.id), lang);
 
   const filteredAll = (() => {
     let rows = all;
@@ -206,9 +198,9 @@ const RecommendScreen: React.FC = () => {
           subtitle={lang === 'en' ? 'Search, browse, or get a personalized match' : '검색·둘러보기·맞춤 추천 한 곳에서'}
           right={
             <TopSettings
-              lang={lang} setLang={handleLang}
-              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-              isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+              lang={lang} setLang={setLang}
+              isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
             />
           }
         />
@@ -305,11 +297,11 @@ const RecommendScreen: React.FC = () => {
                 <p className={`leading-relaxed ${sizeCardDesc}`}>{aiSummary}</p>
               </div>
             )}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-4 flex gap-3 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 snap-x snap-mandatory pb-2 scroll-smooth">
               {recs.map((item) => (
                 <article
                   key={item.id}
-                  className={`${cardCls} p-5 flex flex-col`}
+                  className={`shrink-0 w-[78%] sm:w-72 snap-start ${cardCls} p-5 flex flex-col`}
                 >
                   <h3 className={`font-bold ${titleColor} ${sizeCardTitle}`}>{item.title}</h3>
                   {item.description && (
@@ -356,7 +348,7 @@ const RecommendScreen: React.FC = () => {
                     : (isHighContrast ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/40' : 'bg-surface text-ink-2 border border-line-base hover:bg-surface-muted')
                 }`}
               >
-                전체 <span className="opacity-70 text-xs tabular-nums">{all.length}</span>
+                {lang === 'en' ? 'All' : '전체'} <span className="opacity-70 text-xs tabular-nums">{all.length}</span>
               </button>
               {(Object.keys(CATEGORY_META) as Category[]).map((k) => {
                 const meta = CATEGORY_META[k];
@@ -374,7 +366,7 @@ const RecommendScreen: React.FC = () => {
                     }`}
                   >
                     <span aria-hidden className="text-base">{meta.emoji}</span>
-                    {meta.label}
+                    {categoryLabel(meta, lang)}
                     <span className="opacity-70 text-xs tabular-nums">{count}</span>
                   </button>
                 );
@@ -411,10 +403,15 @@ const RecommendScreen: React.FC = () => {
                           {cat.emoji}
                         </div>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cat.bg} ${cat.text}`}>
-                          {cat.label}
+                          {categoryLabel(cat, lang)}
                         </span>
                       </div>
                       <h3 className={`mt-3 font-bold ${titleColor} ${sizeCardTitle}`}>{s.name}</h3>
+                      {lang !== 'ko' && translations[s.id]?.name && translations[s.id].name !== s.name ? (
+                        <p className="mt-0.5 text-xs text-ink-4 italic truncate">{translations[s.id].name}</p>
+                      ) : (s.official_name && s.official_name !== s.name && lang === 'ko' && (
+                        <p className="mt-0.5 text-xs text-ink-4 italic truncate">{s.official_name}</p>
+                      ))}
                       {(s.ministry || s.department) && (
                         <div className={`mt-1.5 flex items-center gap-1 text-xs ${subtleColor}`}>
                           <Building2 className="w-3.5 h-3.5" />

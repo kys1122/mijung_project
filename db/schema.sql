@@ -122,6 +122,21 @@ CREATE TABLE IF NOT EXISTS mijung_chat_feedback (
   CONSTRAINT fk_fb_message FOREIGN KEY (message_id) REFERENCES mijung_chat_messages(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 민원 데이터 번역 캐시 — LLM 번역 결과를 (service_id, lang)별로 한 번만 캐시
+CREATE TABLE IF NOT EXISTS mijung_service_translations (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  service_id INT UNSIGNED NOT NULL,
+  lang VARCHAR(8) NOT NULL,
+  name VARCHAR(500) NULL,
+  overview TEXT NULL,
+  eligibility TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_service_lang (service_id, lang),
+  KEY idx_lang (lang),
+  CONSTRAINT fk_trans_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 가족/대리인 공유 — owner가 delegate에게 자신의 민원 보기 권한 부여
 -- 같은 (owner, delegate) 조합은 한 행. 상태로 흐름 표현
 CREATE TABLE IF NOT EXISTS mijung_delegations (

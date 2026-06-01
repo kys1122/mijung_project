@@ -13,78 +13,27 @@ export type Category =
 
 type CategoryMeta = {
   label: string;
+  label_en: string;
   emoji: string;
-  bg: string;       // 아이콘 박스/칩 배경
-  text: string;     // 칩 텍스트
-  bar: string;      // 카드 좌측 액센트 바
-  ring: string;     // 보더 색 (hover 등)
+  bg: string;
+  text: string;
+  bar: string;
+  ring: string;
 };
 
+export function categoryLabel(meta: CategoryMeta, lang: string) {
+  return lang === 'ko' ? meta.label : meta.label_en;
+}
+
 export const CATEGORY_META: Record<Category, CategoryMeta> = {
-  welfare: {
-    label: '복지',
-    emoji: '🤝',
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    bar: 'bg-emerald-500',
-    ring: 'border-emerald-200',
-  },
-  medical: {
-    label: '의료',
-    emoji: '🏥',
-    bg: 'bg-rose-50',
-    text: 'text-rose-700',
-    bar: 'bg-rose-500',
-    ring: 'border-rose-200',
-  },
-  housing: {
-    label: '주거',
-    emoji: '🏠',
-    bg: 'bg-amber-50',
-    text: 'text-amber-800',
-    bar: 'bg-amber-500',
-    ring: 'border-amber-200',
-  },
-  immigration: {
-    label: '출입국',
-    emoji: '✈️',
-    bg: 'bg-violet-50',
-    text: 'text-violet-700',
-    bar: 'bg-violet-500',
-    ring: 'border-violet-200',
-  },
-  education: {
-    label: '교육·문화',
-    emoji: '📚',
-    bg: 'bg-sky-50',
-    text: 'text-sky-700',
-    bar: 'bg-sky-500',
-    ring: 'border-sky-200',
-  },
-  living: {
-    label: '생활지원',
-    emoji: '🧺',
-    bg: 'bg-teal-50',
-    text: 'text-teal-700',
-    bar: 'bg-teal-500',
-    ring: 'border-teal-200',
-  },
-  documents: {
-    label: '민원서류',
-    emoji: '📄',
-    bg: 'bg-slate-100',
-    text: 'text-slate-700',
-    bar: 'bg-slate-400',
-    ring: 'border-slate-300',
-  },
-  other: {
-    label: '기타',
-    emoji: '🔖',
-    bg: 'bg-indigo-50',
-    text: 'text-indigo-700',
-    bar: 'bg-indigo-500',
-    ring: 'border-indigo-200',
-  },
+  welfare:     { label: '복지',     label_en: 'Welfare',     emoji: '🤝', bg: 'bg-emerald-50', text: 'text-emerald-700', bar: 'bg-emerald-500', ring: 'border-emerald-200' },
+  medical:     { label: '의료',     label_en: 'Medical',     emoji: '🏥', bg: 'bg-rose-50',    text: 'text-rose-700',    bar: 'bg-rose-500',    ring: 'border-rose-200' },
+  housing:     { label: '주거',     label_en: 'Housing',     emoji: '🏠', bg: 'bg-amber-50',   text: 'text-amber-800',   bar: 'bg-amber-500',   ring: 'border-amber-200' },
+  immigration: { label: '출입국',   label_en: 'Immigration', emoji: '✈️', bg: 'bg-violet-50',  text: 'text-violet-700',  bar: 'bg-violet-500',  ring: 'border-violet-200' },
+  education:   { label: '교육·문화', label_en: 'Education',   emoji: '📚', bg: 'bg-sky-50',     text: 'text-sky-700',     bar: 'bg-sky-500',     ring: 'border-sky-200' },
+  living:      { label: '생활지원', label_en: 'Daily life',  emoji: '🧺', bg: 'bg-teal-50',    text: 'text-teal-700',    bar: 'bg-teal-500',    ring: 'border-teal-200' },
+  documents:   { label: '민원서류', label_en: 'Documents',   emoji: '📄', bg: 'bg-slate-100',  text: 'text-slate-700',   bar: 'bg-slate-400',   ring: 'border-slate-300' },
+  other:       { label: '기타',     label_en: 'Other',       emoji: '🔖', bg: 'bg-indigo-50',  text: 'text-indigo-700',  bar: 'bg-indigo-500',  ring: 'border-indigo-200' },
 };
 
 /** chatbot category 문자열 → Category */

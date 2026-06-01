@@ -19,9 +19,12 @@ import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
 import { normalizeOfficialLink } from '@/lib/url';
 import { getCategoryMeta, fromChatbotCategory, CATEGORY_META } from '@/lib/category';
+import { tUserType, tAgeGroup, tCategory } from '../lib/chat-options-i18n';
+import { useServiceTranslations } from '../lib/use-service-translations';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type Options = { user_types: string[]; age_groups: string[]; categories: string[] };
@@ -39,7 +42,7 @@ type Service = {
 type Stage = 'step1' | 'step2' | 'step3' | 'step4' | 'cards' | 'detail' | 'checklist' | 'freechat';
 
 type Msg =
-  | { kind: 'text'; role: 'user' | 'assistant'; content: string }
+  | { kind: 'text'; role: 'user' | 'assistant'; content: string; i18n?: { ko: string; en: string } }
   | { kind: 'options'; role: 'assistant'; stage: 'step1' | 'step2' | 'step3'; items: string[] }
   | { kind: 'detailInput'; role: 'assistant'; examples: string[] }
   | { kind: 'cards'; role: 'assistant'; services: Service[] }
@@ -54,11 +57,17 @@ const CAT_ICON: Record<string, string> = {
   '민원서류': '📄', '복지': '🤝', '주거': '🏠', '의료': '🏥',
   '생활지원': '💡', '출입국': '✈️', '교육·문화': '📚', '잘 모르겠어요': '❓',
 };
-const EXAMPLES = [
+const EXAMPLES_KO = [
   '할머니가 기초연금 받을 수 있나요?',
   '생활이 어려운데 도움받을 수 있나요?',
   '비자 만료되는데 어떻게 해야 하나요?',
 ];
+const EXAMPLES_EN = [
+  'Can my grandmother receive the basic pension?',
+  "I'm struggling financially — can I get help?",
+  'My visa is expiring — what should I do?',
+];
+function getExamples(lang: string) { return lang === 'en' ? EXAMPLES_EN : EXAMPLES_KO; }
 
 // 체크리스트 — LLM 텍스트의 리스트 항목(1./-/*)을 진짜 체크박스 UI로 렌더
 // 체크 상태는 localStorage("chk:<serviceName>")에 저장돼 같은 민원 다시 보면 복원
@@ -224,11 +233,23 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const sessionParam = searchParams.get('session');
 
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
 
   const [messages, setMessages] = useState<Msg[]>([]);
+
+  // 카드 서비스 ID 모아서 번역 batch 호출
+  const cardServiceIds = (() => {
+    const ids: number[] = [];
+    for (const m of messages) {
+      if (m.kind === 'cards') for (const s of m.services) {
+        const id = Number((s as any).id);
+        if (id) ids.push(id);
+      }
+    }
+    return ids;
+  })();
   const [opts, setOpts] = useState<Options | null>(null);
   const [stage, setStage] = useState<Stage>('step1');
   const [selections, setSelections] = useState({ user_type: '', age_group: '', category: '', detail: '' });
@@ -260,23 +281,13 @@ export default function ChatPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const initRef = useRef(false);
 
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (v: LangCode) => { setLang(v); localStorage.setItem('app_lang', v); };
-  const handleContrast = (v: boolean) => { setIsHighContrast(v); localStorage.setItem('app_contrast', String(v)); };
-  const handleFont = (v: boolean) => { setIsLargeFont(v); localStorage.setItem('app_font', String(v)); };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, sending]);
 
   const t = useTranslations<ChatStrings>('chat', CHAT_STRINGS as unknown as { ko: ChatStrings; en: ChatStrings }, lang);
+  const cardTranslations = useServiceTranslations(cardServiceIds, lang);
 
   const externalSessionId = (() => {
     if (typeof window === 'undefined') return undefined;
@@ -313,7 +324,7 @@ export default function ChatPage() {
         const data: Options = await res.json();
         setOpts(data);
         setMessages([
-          { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Hello! Tell me a bit about yourself to find the right service.' : '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?' },
+          { kind: 'text', role: 'assistant', content: '', i18n: { ko: '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?', en: 'Hello! Tell me a bit about yourself to find the right service.' } },
           { kind: 'options', role: 'assistant', stage: 'step1', items: data.user_types },
         ]);
         setStage('step1');
@@ -329,19 +340,19 @@ export default function ChatPage() {
     setMessages(prev => [
       ...prev,
       { kind: 'text', role: 'user', content: ut },
-      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'How old are you?' : '연령대를 선택해 주세요.' },
+      { kind: 'text', role: 'assistant', content: '', i18n: { ko: '연령대를 선택해 주세요.', en: 'How old are you?' } },
       { kind: 'options', role: 'assistant', stage: 'step2', items: opts?.age_groups ?? [] },
     ]);
     setStage('step2');
     // 외국인 선택 시 영어로 자동 전환 (ui.py:406-407)
-    if (ut === '외국인' && lang === 'ko') handleLang('en');
+    if (ut === '외국인' && lang === 'ko') setLang('en');
   };
   const pickStep2 = (ag: string) => {
     setSelections(s => ({ ...s, age_group: ag }));
     setMessages(prev => [
       ...prev,
       { kind: 'text', role: 'user', content: ag },
-      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'What kind of service do you need?' : '어떤 종류의 서비스가 필요하세요?' },
+      { kind: 'text', role: 'assistant', content: '', i18n: { ko: '어떤 종류의 서비스가 필요하세요?', en: 'What kind of service do you need?' } },
       { kind: 'options', role: 'assistant', stage: 'step3', items: opts?.categories ?? [] },
     ]);
     setStage('step3');
@@ -351,8 +362,8 @@ export default function ChatPage() {
     setMessages(prev => [
       ...prev,
       { kind: 'text', role: 'user', content: cat },
-      { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Tell me about your situation.' : '현재 상황을 알려주세요. 자유롭게 입력하거나 아래 예시를 눌러보세요.' },
-      { kind: 'detailInput', role: 'assistant', examples: EXAMPLES },
+      { kind: 'text', role: 'assistant', content: '', i18n: { ko: '현재 상황을 알려주세요. 자유롭게 입력하거나 아래 예시를 눌러보세요.', en: 'Tell me about your situation. You can type freely or tap an example below.' } },
+      { kind: 'detailInput', role: 'assistant', examples: getExamples(lang) },
     ]);
     setStage('step4');
   };
@@ -581,7 +592,7 @@ export default function ChatPage() {
       const data: Options = await res.json();
       setOpts(data);
       setMessages([
-        { kind: 'text', role: 'assistant', content: lang === 'en' ? 'Hello! Tell me a bit about yourself to find the right service.' : '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?' },
+        { kind: 'text', role: 'assistant', content: '', i18n: { ko: '안녕하세요! 맞춤 민원을 찾아드릴게요. 어떤 분이 이용하시나요?', en: 'Hello! Tell me a bit about yourself to find the right service.' } },
         { kind: 'options', role: 'assistant', stage: 'step1', items: data.user_types },
       ]);
     } catch (e) { console.error('options 로드 실패:', e); }
@@ -755,9 +766,9 @@ export default function ChatPage() {
             </button>
           </div>
           <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            lang={lang} setLang={setLang}
+            isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
           />
         </header>
 
@@ -810,20 +821,21 @@ export default function ChatPage() {
           {messages.map((m, i) => {
             if (m.kind === 'text') {
               const isUser = m.role === 'user';
+              const displayContent = m.i18n ? (lang === 'en' ? m.i18n.en : m.i18n.ko) : m.content;
               if (isUser) {
                 return (
                   <div key={i} className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap leading-relaxed shadow-sm ${sizeBubble} ${userBubble} self-end rounded-tr-md`}>
-                    {m.content}
+                    {displayContent}
                   </div>
                 );
               }
               // assistant text — content + 평가 버튼
-              const isFreechatAnswer = m.content && m.content.length > 40; // 단순 휴리스틱: 자유 채팅 응답 (긴 응답)에만 노출
+              const isFreechatAnswer = displayContent && displayContent.length > 40 && !m.i18n;
               const rated = feedback[i];
               return (
                 <div key={i} className="max-w-[85%] self-start flex flex-col gap-1.5">
                   <div className={`px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${sizeBubble} ${botBubble}`}>
-                    {m.content}
+                    {displayContent}
                   </div>
                   {isFreechatAnswer && getAccessToken() && (
                     <div className="flex items-center gap-1 pl-1">
@@ -879,6 +891,11 @@ export default function ChatPage() {
                     {m.items.map((opt) => {
                       const catKey = m.stage === 'step3' ? fromChatbotCategory(opt) : null;
                       const catMeta = catKey ? CATEGORY_META[catKey] : null;
+                      const label = m.stage === 'step1'
+                        ? tUserType(opt, lang)
+                        : m.stage === 'step2'
+                          ? tAgeGroup(opt, lang)
+                          : tCategory(opt, lang);
                       return (
                         <button
                           key={opt}
@@ -891,7 +908,7 @@ export default function ChatPage() {
                               <span className={`inline-flex w-1.5 h-5 rounded-full ${catMeta.bar}`} aria-hidden />
                             )}
                             {iconMap[opt] ? <span>{iconMap[opt]}</span> : null}
-                            <span>{opt}</span>
+                            <span>{label}</span>
                           </span>
                         </button>
                       );
@@ -978,11 +995,13 @@ export default function ChatPage() {
                               <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isHighContrast ? 'bg-zinc-800 text-yellow-300 border border-yellow-400/40' : `${cat.bg} ${cat.text}`}`}>
-                                  {cat.label}
+                                  {lang === 'ko' ? cat.label : cat.label_en}
                                 </span>
                               </div>
                               <p className={`mt-1.5 font-semibold ${titleColor} ${sizeBubble}`}>{svc.service_name}</p>
-                              {subTitle && <p className={`mt-0.5 text-xs ${subtleColor} truncate`}>{subTitle}</p>}
+                              {lang !== 'ko' && cardTranslations[Number((svc as any).id)]?.name && cardTranslations[Number((svc as any).id)].name !== svc.service_name ? (
+                                <p className={`mt-0.5 text-xs italic ${subtleColor} truncate`}>{cardTranslations[Number((svc as any).id)].name}</p>
+                              ) : (subTitle && lang === 'ko' && <p className={`mt-0.5 text-xs italic ${subtleColor} truncate`}>{subTitle}</p>)}
                               {targetChips.length > 0 && (
                                 <div className="mt-1.5 flex flex-wrap gap-1">
                                   {targetChips.map((tg, ti) => (
@@ -1098,6 +1117,7 @@ export default function ChatPage() {
           })}
         </div>
 
+        {stage === 'freechat' && (
         <div className={`px-5 sm:px-8 py-3 border-t ${headerBorder}`}>
           {/* 상태 라인: 녹음 중 또는 STT 에러 */}
           {(isRecording || sttError) && (
@@ -1142,6 +1162,7 @@ export default function ChatPage() {
             </button>
           </div>
         </div>
+        )}
       </div>
       <BottomNav />
 

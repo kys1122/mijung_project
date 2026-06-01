@@ -6,12 +6,15 @@ import React, { useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../../../lib/languages';
+import { type LangCode } from '../../../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../../../lib/app-prefs';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
 import RichTextRenderer from '../../../components/RichTextRenderer';
 import FavoriteButton from '../../../components/FavoriteButton';
 import { normalizeOfficialLink } from '@/lib/url';
+import { useServiceTranslation } from '../../../lib/use-service-translation';
+import { tStepTitle } from '../../../lib/chat-options-i18n';
 
 const ProcedureScreen: React.FC = () => {
   const router = useRouter();
@@ -35,22 +38,10 @@ const ProcedureScreen: React.FC = () => {
   const [llmDetail, setLlmDetail] = useState<string>('');
   const [llmDetailLoading, setLlmDetailLoading] = useState(false);
 
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-
-  const handleLang = (newLang: LangCode) => { setLang(newLang); localStorage.setItem('app_lang', newLang); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useServiceTranslation(id, lang);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,19 +62,7 @@ const ProcedureScreen: React.FC = () => {
           fee: data.fee ?? null,
           official_link: data.official_link ?? null,
         });
-        if (data.name) {
-          setLlmDetailLoading(true);
-          try {
-            const detRes = await fetch('/api/service-detail', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ service_name: data.name, lang: 'ko', user_type: '' }),
-            });
-            const detData = await detRes.json();
-            if (detData?.detail) setLlmDetail(detData.detail);
-          } catch (e) { console.error('service-detail 호출 실패:', e); }
-          finally { setLlmDetailLoading(false); }
-        }
+        // LLM detail은 lang 변경에 반응하도록 별도 useEffect에서 호출
       } catch (err) {
         console.error("데이터 로드 실패:", err);
       } finally {
@@ -112,6 +91,23 @@ const ProcedureScreen: React.FC = () => {
       if (d?.favorites) setIsFavorited(d.favorites.some((f: any) => Number(f.id) === Number(id)));
     }).catch(() => {});
   }, [id]);
+
+  // LLM detail — lang 변경 시 다시 fetch (서비스명 + 언어 둘 다 deps)
+  useEffect(() => {
+    if (!serviceName.ko) return;
+    let cancelled = false;
+    setLlmDetailLoading(true);
+    fetch('/api/service-detail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service_name: serviceName.ko, lang, user_type: '' }),
+    })
+      .then(r => r.json())
+      .then(d => { if (!cancelled && d?.detail) setLlmDetail(d.detail); })
+      .catch(e => console.error('service-detail 호출 실패:', e))
+      .finally(() => { if (!cancelled) setLlmDetailLoading(false); });
+    return () => { cancelled = true; };
+  }, [serviceName.ko, lang]);
 
   // 트랙별 진행률 — 공통 단계는 양쪽 트랙에 모두 카운트
   const commonSteps = step.filter((s: any) => s.track === 'common' || !s.track);
@@ -277,9 +273,9 @@ const ProcedureScreen: React.FC = () => {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            lang={lang} setLang={setLang}
+            isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+            isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
           />
         </header>
 
@@ -290,9 +286,13 @@ const ProcedureScreen: React.FC = () => {
                 {info.ministry || info.department}
               </p>
             )}
+            {/* 제목: 원문 한국어 + (영어 사용자에겐) 작게 번역 병기 */}
             <h1 className={`mt-2 ui-page-title ${titleColor}`}>
-              {lang === 'en' && serviceName.en ? serviceName.en : serviceName.ko}
+              {serviceName.ko}
             </h1>
+            {lang !== 'ko' && tr?.name && tr.name !== serviceName.ko && (
+              <p className={`mt-1 text-base italic ${subtleColor}`}>{tr.name}</p>
+            )}
           </div>
           <div className="shrink-0 mt-2">
             <FavoriteButton serviceId={id} initial={isFavorited} size="lg" />
@@ -430,7 +430,7 @@ const ProcedureScreen: React.FC = () => {
                 {displayNum}
               </div>
               <div className="p-5 pt-7">
-                <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>{s.title}</h2>
+                <h2 className={`font-bold ${titleColor} ${sizeStepTitle}`}>{tStepTitle(s.title, lang)}</h2>
                 {s.description && (
                   <p className={`mt-1.5 leading-relaxed ${descColor} ${sizeBody}`}>{s.description}</p>
                 )}

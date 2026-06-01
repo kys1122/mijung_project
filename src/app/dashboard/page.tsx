@@ -9,10 +9,11 @@ import PageHeader from "../components/PageHeader";
 import FavoriteButton from "../components/FavoriteButton";
 import ActivityDonut from "../components/ActivityDonut";
 import TopSettings from "../components/TopSettings";
-import { getCategoryMeta } from "@/lib/category";
+import { getCategoryMeta, categoryLabel } from "@/lib/category";
+import { useServiceTranslations } from "../lib/use-service-translations";
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
 
 type Step = 'description' | 'required_docs' | 'checklist' | 'submitted';
 
@@ -30,31 +31,39 @@ type MyService = {
   updated_at: string;
 };
 
-const STEP_META: Record<Step, { label: string; chip: string; Icon: React.ComponentType<{ className?: string }> }> = {
-  description:   { label: '둘러보는 중',       chip: 'ui-chip-neutral', Icon: FilePlus2 },
-  required_docs: { label: '준비물 확인 중',     chip: 'ui-chip-warning', Icon: FileText },
-  checklist:     { label: '체크리스트 진행 중', chip: 'ui-chip',         Icon: ClipboardCheck },
-  submitted:     { label: '신청 완료',         chip: 'ui-chip-success', Icon: CheckCircle2 },
+const STEP_META: Record<Step, { ko: string; en: string; chip: string; Icon: React.ComponentType<{ className?: string }> }> = {
+  description:   { ko: '둘러보는 중',       en: 'Exploring',         chip: 'ui-chip-neutral', Icon: FilePlus2 },
+  required_docs: { ko: '준비물 확인 중',     en: 'Checking documents', chip: 'ui-chip-warning', Icon: FileText },
+  checklist:     { ko: '체크리스트 진행 중', en: 'In checklist',       chip: 'ui-chip',         Icon: ClipboardCheck },
+  submitted:     { ko: '신청 완료',         en: 'Submitted ✓',        chip: 'ui-chip-success', Icon: CheckCircle2 },
 };
 
-const NEXT_STEP_HINT: Record<Step, { label: string; cta: string }> = {
-  description:   { label: '준비물 확인하기',     cta: '서류 보기 →' },
-  required_docs: { label: '서류 챙기고 체크리스트로', cta: '이어서 진행 →' },
-  checklist:     { label: '체크리스트 마저 하기', cta: '이어서 진행 →' },
-  submitted:     { label: '신청 완료 ✓',          cta: '결과 보기 →' },
+const NEXT_STEP_HINT: Record<Step, { ko: { label: string; cta: string }; en: { label: string; cta: string } }> = {
+  description:   { ko: { label: '준비물 확인하기',          cta: '서류 보기 →' },     en: { label: 'Check documents',  cta: 'View →' } },
+  required_docs: { ko: { label: '서류 챙기고 체크리스트로', cta: '이어서 진행 →' },   en: { label: 'Go to checklist',  cta: 'Continue →' } },
+  checklist:     { ko: { label: '체크리스트 마저 하기',     cta: '이어서 진행 →' },   en: { label: 'Finish checklist', cta: 'Continue →' } },
+  submitted:     { ko: { label: '신청 완료 ✓',              cta: '결과 보기 →' },     en: { label: 'Completed ✓',      cta: 'View →' } },
 };
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, lang: string = 'ko'): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR');
+  const en = lang === 'en';
+  if (diff < 60) return en ? 'just now' : '방금 전';
+  if (diff < 3600) return en ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return en ? `${Math.floor(diff / 3600)}h ago` : `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 604800) return en ? `${Math.floor(diff / 86400)}d ago` : `${Math.floor(diff / 86400)}일 전`;
+  return new Date(iso).toLocaleDateString(en ? 'en-US' : 'ko-KR');
 }
 
-function getGreeting(name?: string | null): { hi: string; sub: string } {
+function getGreeting(name: string | null | undefined, lang: string): { hi: string; sub: string } {
   const h = new Date().getHours();
+  if (lang === 'en') {
+    const part = h < 6 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    return {
+      hi: name ? `${part}, ${name}` : part,
+      sub: 'Take it one step at a time today',
+    };
+  }
   const part = h < 6 ? '늦은 밤' : h < 12 ? '좋은 아침' : h < 18 ? '좋은 오후' : '좋은 저녁';
   return {
     hi: name ? `${part}이에요, ${name}님` : `${part}이에요`,
@@ -79,21 +88,10 @@ const DashboardScreen: React.FC = () => {
   const [delegations, setDelegations] = useState<{ as_owner: DelegationItem[]; as_delegate: DelegationItem[] }>({ as_owner: [], as_delegate: [] });
   const [viewingAs, setViewingAs] = useState<DelegationItem | null>(null);
 
-  // 접근성 토글 (한국어/고대비/큰글씨)
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (val: LangCode) => { setLang(val); localStorage.setItem('app_lang', val); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  // 접근성 토글 (전역 동기화)
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
   const tSet = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const fetchServices = async (onBehalfOf?: number | null) => {
@@ -173,6 +171,12 @@ const DashboardScreen: React.FC = () => {
     router.push(`${path}${qs}`);
   };
 
+  // 카드 제목 번역 캐시 — 한 번에 batch
+  const translations = useServiceTranslations(
+    [...services.map(s => s.id), ...favorites.map(f => f.id), ...recents.map(r => r.id)],
+    lang
+  );
+
   const inProgress = services.filter(s => s.last_step !== 'submitted').length;
   const submitted = services.filter(s => s.last_step === 'submitted').length;
 
@@ -184,10 +188,10 @@ const DashboardScreen: React.FC = () => {
     submitted,
   };
   const donutSegments = [
-    { label: '둘러보는 중',        value: stepCounts.description,   color: '#cbd5e1' }, // slate-300
-    { label: '준비물 확인 중',      value: stepCounts.required_docs, color: '#f59e0b' }, // amber-500
-    { label: '체크리스트 진행 중',  value: stepCounts.checklist,     color: '#2563eb' }, // brand-600
-    { label: '완료',                value: stepCounts.submitted,     color: '#10b981' }, // emerald-500
+    { label: lang === 'en' ? 'Exploring' : '둘러보는 중',        value: stepCounts.description,   color: '#cbd5e1' },
+    { label: lang === 'en' ? 'Documents' : '준비물 확인 중',      value: stepCounts.required_docs, color: '#f59e0b' },
+    { label: lang === 'en' ? 'Checklist' : '체크리스트 진행 중',  value: stepCounts.checklist,     color: '#2563eb' },
+    { label: lang === 'en' ? 'Completed' : '완료',                value: stepCounts.submitted,     color: '#10b981' },
   ];
   const totalServices = services.length;
 
@@ -196,7 +200,7 @@ const DashboardScreen: React.FC = () => {
     .filter(s => s.last_step !== 'submitted')
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
 
-  const greeting = getGreeting(userName);
+  const greeting = getGreeting(userName, lang);
 
   return (
     <div className="min-h-screen bg-surface-page pb-28">
@@ -206,9 +210,9 @@ const DashboardScreen: React.FC = () => {
           subtitle={greeting.sub}
           right={
             <TopSettings
-              lang={lang} setLang={handleLang}
-              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-              isLargeFont={isLargeFont} setIsLargeFont={handleFont}
+              lang={lang} setLang={setLang}
+              isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont}
               t={tSet}
             />
           }
@@ -218,7 +222,7 @@ const DashboardScreen: React.FC = () => {
         {activeDelegators.length > 0 && (
           <div className="mt-4 ui-card p-3 flex items-center gap-2 ui-enter">
             <Users className="w-4 h-4 text-brand-600 shrink-0" />
-            <span className="text-xs text-ink-3 shrink-0">보는 사람:</span>
+            <span className="text-xs text-ink-3 shrink-0">{lang === 'en' ? 'Viewing as:' : '보는 사람:'}</span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => switchToDelegate(null)}
@@ -246,13 +250,13 @@ const DashboardScreen: React.FC = () => {
             <div className="mx-auto w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center">
               <FilePlus2 className="w-8 h-8 text-brand-600" />
             </div>
-            <p className="mt-5 text-lg font-semibold text-ink-1">아직 진행 중인 민원이 없어요</p>
-            <p className="mt-1.5 text-sm text-ink-3">민원 목록에서 원하는 민원을 시작해보세요</p>
+            <p className="mt-5 text-lg font-semibold text-ink-1">{lang === 'en' ? 'No services in progress yet' : '아직 진행 중인 민원이 없어요'}</p>
+            <p className="mt-1.5 text-sm text-ink-3">{lang === 'en' ? 'Browse services and pick one to start' : '민원 목록에서 원하는 민원을 시작해보세요'}</p>
             <button
               onClick={() => router.push('/recommend')}
               className="ui-btn-primary w-full mt-6"
             >
-              민원 찾아보기
+              {lang === 'en' ? 'Find services' : '민원 찾아보기'}
             </button>
           </div>
         ) : (
@@ -260,7 +264,7 @@ const DashboardScreen: React.FC = () => {
             {/* 다음 할 일 — 가장 임박한 미완료 민원 */}
             {nextItem && (() => {
               const cat = getCategoryMeta({ name: nextItem.name, ministry: nextItem.ministry, department: nextItem.department });
-              const hint = NEXT_STEP_HINT[nextItem.last_step];
+              const hint = NEXT_STEP_HINT[nextItem.last_step][lang === 'en' ? 'en' : 'ko'];
               return (
                 <button
                   onClick={() => goToService(nextItem)}
@@ -273,7 +277,7 @@ const DashboardScreen: React.FC = () => {
                     <div className="flex-1 p-5 sm:p-6">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-brand-600" />
-                        <span className="ui-section-label text-brand-700">이어서 진행하기</span>
+                        <span className="ui-section-label text-brand-700">{lang === 'en' ? 'Continue' : '이어서 진행하기'}</span>
                       </div>
                       <div className="mt-3 flex items-center gap-3">
                         <div className={`shrink-0 w-12 h-12 rounded-2xl ${cat.bg} flex items-center justify-center text-2xl`}>
@@ -281,15 +285,20 @@ const DashboardScreen: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h2 className="text-base sm:text-lg font-bold text-ink-1 truncate">{nextItem.name}</h2>
-                          <p className={`mt-0.5 inline-flex items-center gap-1 text-xs font-semibold ${cat.text}`}>
+                          {lang !== 'ko' && translations[nextItem.id]?.name && translations[nextItem.id].name !== nextItem.name ? (
+                            <p className="mt-0.5 text-xs text-ink-4 truncate italic">{translations[nextItem.id].name}</p>
+                          ) : (nextItem.official_name && nextItem.official_name !== nextItem.name && lang === 'ko' && (
+                            <p className="mt-0.5 text-xs text-ink-4 truncate italic">{nextItem.official_name}</p>
+                          ))}
+                          <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${cat.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${cat.bar}`} />
-                            {cat.label}
+                            {categoryLabel(cat, lang)}
                           </p>
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-ink-2">
-                          다음: <span className="text-ink-1">{hint.label}</span>
+                          {lang === 'en' ? 'Next: ' : '다음: '}<span className="text-ink-1">{hint.label}</span>
                         </p>
                         <span className="text-sm font-semibold text-brand-600 inline-flex items-center gap-0.5">
                           {hint.cta}
@@ -306,7 +315,7 @@ const DashboardScreen: React.FC = () => {
               <section data-tour="favorites-section" className="mt-6 ui-enter" style={{ animationDelay: '70ms' }}>
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
-                  <h2 className="text-sm font-bold text-ink-1">즐겨찾기</h2>
+                  <h2 className="text-sm font-bold text-ink-1">{lang === 'en' ? 'Favorites' : '즐겨찾기'}</h2>
                   <span className="text-xs text-ink-4 tabular-nums">{favorites.length}</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap pb-1">
@@ -372,16 +381,19 @@ const DashboardScreen: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={meta.chip}>{meta.label}</span>
+                          <span className={meta.chip}>{lang === 'en' ? meta.en : meta.ko}</span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cat.bg} ${cat.text}`}>
-                            {cat.label}
+                            {categoryLabel(cat, lang)}
                           </span>
                           {svc.completed_count > 0 && (
-                            <span className="text-xs text-ink-4">체크 {svc.completed_count}개</span>
+                            <span className="text-xs text-ink-4">{lang === 'en' ? `${svc.completed_count} checked` : `체크 ${svc.completed_count}개`}</span>
                           )}
                         </div>
                         <h2 className="mt-2 text-base sm:text-lg font-bold text-ink-1 truncate">{svc.name}</h2>
-                        {subtitle && <p className="mt-0.5 text-xs text-ink-4 truncate">{subtitle}</p>}
+                        {lang !== 'ko' && translations[svc.id]?.name && translations[svc.id].name !== svc.name && (
+                          <p className="mt-0.5 text-xs text-ink-4 truncate italic">{translations[svc.id].name}</p>
+                        )}
+                        {subtitle && lang === 'ko' && <p className="mt-0.5 text-xs text-ink-4 truncate italic">{subtitle}</p>}
                         {svc.eligibility && (
                           <p className="mt-2 text-sm text-ink-3 line-clamp-2 leading-relaxed">{svc.eligibility}</p>
                         )}
@@ -401,7 +413,7 @@ const DashboardScreen: React.FC = () => {
                             )}
                           </div>
                         )}
-                        <p className="mt-2 text-xs text-ink-4">{timeAgo(svc.updated_at)} 활동</p>
+                        <p className="mt-2 text-xs text-ink-4">{timeAgo(svc.updated_at, lang)}{lang === 'en' ? '' : ' 활동'}</p>
                       </div>
                       <div className="shrink-0 flex flex-col items-center gap-1 ml-1 mt-1" onClick={(e) => e.stopPropagation()}>
                         {!viewingAs && (
@@ -420,7 +432,7 @@ const DashboardScreen: React.FC = () => {
               <section className="mt-8 ui-enter">
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <History className="w-4 h-4 text-ink-3" />
-                  <h2 className="text-sm font-bold text-ink-1">최근 본 민원</h2>
+                  <h2 className="text-sm font-bold text-ink-1">{lang === 'en' ? 'Recently viewed' : '최근 본 민원'}</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {recents
@@ -437,7 +449,7 @@ const DashboardScreen: React.FC = () => {
                           <span className={`w-8 h-8 rounded-lg ${cat.bg} flex items-center justify-center text-base shrink-0`}>{cat.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-ink-1 truncate">{r.name}</p>
-                            <p className="text-xs text-ink-4">{timeAgo(r.viewed_at)}</p>
+                            <p className="text-xs text-ink-4">{timeAgo(r.viewed_at, lang)}</p>
                           </div>
                         </button>
                       );

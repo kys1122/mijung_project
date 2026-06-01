@@ -8,7 +8,8 @@ import BottomNav from '../components/BottomNav';
 import PageHeader from '../components/PageHeader';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
-import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
+import { type LangCode } from '../lib/languages';
+import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type ChatSession = {
@@ -40,21 +41,9 @@ const ListScreen: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [lang, setLang] = useState<LangCode>(DEFAULT_LANG);
-  const [isHighContrast, setIsHighContrast] = useState(false);
-  const [isLargeFont, setIsLargeFont] = useState(false);
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('app_lang') ?? '';
-    const savedContrast = localStorage.getItem('app_contrast') === 'true';
-    const savedFont = localStorage.getItem('app_font') === 'true';
-    if (isSupported(savedLang)) setLang(savedLang);
-    if (savedContrast) setIsHighContrast(savedContrast);
-    if (savedFont) setIsLargeFont(savedFont);
-  }, []);
-  const handleLang = (val: LangCode) => { setLang(val); localStorage.setItem('app_lang', val); };
-  const handleContrast = (val: boolean) => { setIsHighContrast(val); localStorage.setItem('app_contrast', String(val)); };
-  const handleFont = (val: boolean) => { setIsLargeFont(val); localStorage.setItem('app_font', String(val)); };
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
 
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
@@ -113,9 +102,9 @@ const ListScreen: React.FC = () => {
           subtitle={lang === 'en' ? 'Past conversations with the chatbot' : '챗봇과 나눈 대화를 다시 볼 수 있어요'}
           right={
             <TopSettings
-              lang={lang} setLang={handleLang}
-              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-              isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+              lang={lang} setLang={setLang}
+              isHighContrast={isHighContrast} setIsHighContrast={setIsHighContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={setIsLargeFont} t={t}
             />
           }
         />
