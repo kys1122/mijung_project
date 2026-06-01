@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Sparkles, Search, Building2, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Search, Building2, Loader2 } from "lucide-react";
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { DEFAULT_LANG, isSupported, type LangCode } from '../lib/languages';
-import { getCategoryMeta } from '@/lib/category';
+import { getCategoryMeta, CATEGORY_META, type Category } from '@/lib/category';
 
 interface RecItem {
   id: number;
@@ -41,6 +42,9 @@ const RecommendScreen: React.FC = () => {
   const [searchHits, setSearchHits] = useState<RecItem[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchedQuery, setSearchedQuery] = useState("");
+
+  // 카테고리 필터 — 'all' 또는 Category
+  const [catFilter, setCatFilter] = useState<'all' | Category>('all');
 
   useEffect(() => {
     try {
@@ -141,14 +145,31 @@ const RecommendScreen: React.FC = () => {
     setSearchedQuery("");
   };
 
-  const filteredAll = query.trim()
-    ? all.filter((s) => {
-        const q = query.trim().toLowerCase();
-        return s.name.toLowerCase().includes(q)
-          || (s.official_name ?? '').toLowerCase().includes(q)
-          || (s.ministry ?? '').toLowerCase().includes(q);
-      })
-    : all;
+  const filteredAll = (() => {
+    let rows = all;
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      rows = rows.filter((s) =>
+        s.name.toLowerCase().includes(q)
+        || (s.official_name ?? '').toLowerCase().includes(q)
+        || (s.ministry ?? '').toLowerCase().includes(q)
+      );
+    }
+    if (catFilter !== 'all') {
+      rows = rows.filter((s) => getCategoryMeta({ name: s.name, ministry: s.ministry, department: s.department }).key === catFilter);
+    }
+    return rows;
+  })();
+
+  // 카테고리별 카운트 — 칩에 표시
+  const catCounts = (() => {
+    const map = new Map<Category, number>();
+    for (const s of all) {
+      const k = getCategoryMeta({ name: s.name, ministry: s.ministry, department: s.department }).key;
+      map.set(k, (map.get(k) ?? 0) + 1);
+    }
+    return map;
+  })();
 
   const pageBg = isHighContrast ? 'bg-black' : 'bg-surface-page';
   const cardCls = isHighContrast ? 'rounded-2xl bg-zinc-900 border border-yellow-400' : 'ui-card-interactive';
@@ -179,44 +200,34 @@ const RecommendScreen: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${pageBg}`}>
-      <div className="mx-auto max-w-md sm:max-w-3xl lg:max-w-5xl px-5 sm:px-8 pt-4 pb-28">
-        <div className="flex items-start justify-end">
-          <TopSettings
-            lang={lang} setLang={handleLang}
-            isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
-            isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
-          />
-        </div>
-
-        <div className="mt-2">
-          <h1 className={`font-bold tracking-tight ${titleColor} ${sizeTitle}`}>
-            {lang === 'en' ? 'Services' : '민원 둘러보기'}
-          </h1>
-          <p className={`mt-1 ${subtleColor} ${sizeSub}`}>
-            {lang === 'en'
-              ? 'Search, browse, or get a personalized match'
-              : '검색·둘러보기·맞춤 추천 한 곳에서'}
-          </p>
-        </div>
+      <div className="mx-auto max-w-md sm:max-w-3xl lg:max-w-5xl px-5 sm:px-8 pb-28">
+        <PageHeader
+          title={lang === 'en' ? 'Services' : '민원 둘러보기'}
+          subtitle={lang === 'en' ? 'Search, browse, or get a personalized match' : '검색·둘러보기·맞춤 추천 한 곳에서'}
+          right={
+            <TopSettings
+              lang={lang} setLang={handleLang}
+              isHighContrast={isHighContrast} setIsHighContrast={handleContrast}
+              isLargeFont={isLargeFont} setIsLargeFont={handleFont} t={t}
+            />
+          }
+        />
 
         {/* 검색 박스 */}
-        <form
-          onSubmit={(e) => { e.preventDefault(); runSearch(); }}
-          className="mt-5"
-        >
+        <form onSubmit={(e) => { e.preventDefault(); runSearch(); }} className="mt-6">
           <div className="relative">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${subtleColor}`} />
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${subtleColor}`} />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={lang === 'en' ? 'Search civil services...' : '예: 기초연금, 건강보험, 외국인 등록...'}
-              className={`w-full pl-10 pr-28 py-3.5 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeCardDesc}`}
+              className={`w-full pl-11 pr-28 h-14 rounded-2xl border outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-colors text-base ${inputBg}`}
             />
             <button
               type="submit"
               disabled={!query.trim() || searchLoading}
-              className={`absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ctaBtn} text-sm`}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center px-4 h-10 rounded-xl font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ctaBtn} text-sm`}
             >
               {searchLoading
                 ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -227,10 +238,10 @@ const RecommendScreen: React.FC = () => {
 
         {/* AI 검색 결과 */}
         {searchHits !== null && (
-          <section className="mt-7">
+          <section className="mt-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+                <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
                 <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
                   {lang === 'en' ? 'Search results' : '검색 결과'}
                 </h2>
@@ -256,7 +267,7 @@ const RecommendScreen: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {searchHits.map((item) => (
                   <article
                     key={item.id}
@@ -282,9 +293,9 @@ const RecommendScreen: React.FC = () => {
 
         {/* /qa에서 받은 맞춤 추천 (검색 안 했을 때만) */}
         {recs.length > 0 && searchHits === null && (
-          <section className="mt-7">
+          <section className="mt-8">
             <div className="flex items-center gap-2">
-              <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
+              <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
               <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
                 {lang === 'en' ? 'Matched for you' : '맞춤 추천'}
               </h2>
@@ -294,7 +305,7 @@ const RecommendScreen: React.FC = () => {
                 <p className={`leading-relaxed ${sizeCardDesc}`}>{aiSummary}</p>
               </div>
             )}
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recs.map((item) => (
                 <article
                   key={item.id}
@@ -322,17 +333,54 @@ const RecommendScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
               {lang === 'en' ? 'All services' : '전체 민원'}
-              {!allLoading && <span className={`ml-2 font-medium ${subtleColor} ${sizeCardDesc}`}>({all.length})</span>}
+              {!allLoading && <span className={`ml-2 font-medium ${subtleColor} ${sizeCardDesc}`}>({filteredAll.length}{catFilter !== 'all' || query.trim() ? `/${all.length}` : ''})</span>}
             </h2>
             {recs.length === 0 && searchHits === null && (
               <button
-                onClick={() => router.push('/qa')}
-                className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}
+                onClick={() => router.push('/chat')}
+                className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`}
               >
                 {lang === 'en' ? '+ Get recommendations' : '+ 맞춤 추천 받기'}
               </button>
             )}
           </div>
+
+          {/* 카테고리 필터 칩 */}
+          {all.length > 0 && (
+            <div data-tour="recommend-categories" className="mt-4 mb-2 flex gap-2.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap pb-2 pt-1">
+              <button
+                onClick={() => setCatFilter('all')}
+                className={`shrink-0 inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full text-sm font-semibold transition-colors ${
+                  catFilter === 'all'
+                    ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-ink-1 text-white')
+                    : (isHighContrast ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/40' : 'bg-surface text-ink-2 border border-line-base hover:bg-surface-muted')
+                }`}
+              >
+                전체 <span className="opacity-70 text-xs tabular-nums">{all.length}</span>
+              </button>
+              {(Object.keys(CATEGORY_META) as Category[]).map((k) => {
+                const meta = CATEGORY_META[k];
+                const count = catCounts.get(k) ?? 0;
+                if (count === 0) return null;
+                const active = catFilter === k;
+                return (
+                  <button
+                    key={k}
+                    onClick={() => setCatFilter(k)}
+                    className={`shrink-0 inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full text-sm font-semibold transition-all ${
+                      active
+                        ? (isHighContrast ? 'bg-yellow-400 text-black' : `${meta.bg} ${meta.text} ring-1 ring-current/30`)
+                        : (isHighContrast ? 'bg-zinc-900 text-zinc-300 border border-zinc-700' : 'bg-surface text-ink-2 border border-line-base hover:bg-surface-muted')
+                    }`}
+                  >
+                    <span aria-hidden className="text-base">{meta.emoji}</span>
+                    {meta.label}
+                    <span className="opacity-70 text-xs tabular-nums">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {allLoading ? (
             <div className="mt-8 flex flex-col items-center gap-3 text-slate-500">
@@ -346,18 +394,18 @@ const RecommendScreen: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredAll.map((s, idx) => {
                 const cat = getCategoryMeta({ name: s.name, ministry: s.ministry, department: s.department });
                 return (
                   <button
                     key={s.id}
                     onClick={() => navigateToService(s.id)}
-                    className={`group ${cardCls} text-left flex overflow-hidden active:scale-[0.99] transition-transform ui-enter`}
+                    className={`group ${cardCls} text-left flex overflow-hidden active:scale-[0.99] transition-transform ui-enter h-full`}
                     style={{ animationDelay: `${idx * 30}ms` }}
                   >
                     <div className={`w-1.5 ${cat.bar} shrink-0`} />
-                    <div className="flex-1 p-4 flex flex-col">
+                    <div className="flex-1 p-5 flex flex-col">
                       <div className="flex items-center gap-2">
                         <div className={`shrink-0 w-9 h-9 rounded-xl ${cat.bg} flex items-center justify-center text-lg`}>
                           {cat.emoji}

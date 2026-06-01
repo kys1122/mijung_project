@@ -1,6 +1,6 @@
 import { executeQuery } from "@/lib/database";
 import { NextResponse } from "next/server";
-import { getUserIdFromRequest } from "@/lib/auth";
+import { getEffectiveUserId } from "@/lib/auth";
 
 const getPureLink = (rawLink : string | null) => {
     if (!rawLink) return null;
@@ -31,7 +31,7 @@ export async function GET(request : Request, {params} : {params: Promise<{ servi
         const resolvedParams = await params;
         const service_id = decodeURIComponent(resolvedParams.service_id);
 
-        const userId = getUserIdFromRequest(request);
+        const userId = await getEffectiveUserId(request);
 
         // DB 조회 (주소창에 ID 숫자가 오든, 한글 service_name이 오든 둘 다 찾을 수 있게 수정)
         // service_sources 없어도 services 정보로 표시되도록 LEFT JOIN

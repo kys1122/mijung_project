@@ -33,11 +33,10 @@ export default function PageHeader({
         {showBack ? (
           <button
             onClick={handleBack}
-            className="ui-btn-ghost -ml-2"
+            className="inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-full text-ink-2 hover:bg-surface-muted transition-colors"
             aria-label="뒤로"
           >
-            <ChevronLeft className="w-5 h-5" />
-            <span className="sr-only sm:not-sr-only sm:inline">뒤로</span>
+            <ChevronLeft className="w-6 h-6" />
           </button>
         ) : (
           <span />

@@ -80,3 +80,62 @@ CREATE TABLE IF NOT EXISTS mijung_chat_messages (
   CONSTRAINT fk_msg_session FOREIGN KEY (session_id) REFERENCES mijung_chat_sessions(id) ON DELETE CASCADE,
   KEY idx_session_created (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 즐겨찾기 — 사용자가 관심 표시한 민원
+CREATE TABLE IF NOT EXISTS mijung_favorites (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  service_id INT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_service (user_id, service_id),
+  KEY idx_user_created (user_id, created_at),
+  CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_fav_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 최근 본 민원 — 페이지 진입 시 자동 기록. UNIQUE로 중복 없이 viewed_at만 갱신
+CREATE TABLE IF NOT EXISTS mijung_recent_views (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  service_id INT UNSIGNED NOT NULL,
+  viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_service (user_id, service_id),
+  KEY idx_user_viewed (user_id, viewed_at),
+  CONSTRAINT fk_recent_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_recent_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 챗봇 응답 평가 — 사용자가 assistant 메시지에 👍/👎
+CREATE TABLE IF NOT EXISTS mijung_chat_feedback (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  session_id INT NULL,
+  message_id INT NULL,
+  rating ENUM('up', 'down') NOT NULL,
+  comment VARCHAR(500) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_message (user_id, message_id),
+  KEY idx_session (session_id),
+  KEY idx_rating_created (rating, created_at),
+  CONSTRAINT fk_fb_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_fb_session FOREIGN KEY (session_id) REFERENCES mijung_chat_sessions(id) ON DELETE SET NULL,
+  CONSTRAINT fk_fb_message FOREIGN KEY (message_id) REFERENCES mijung_chat_messages(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 가족/대리인 공유 — owner가 delegate에게 자신의 민원 보기 권한 부여
+-- 같은 (owner, delegate) 조합은 한 행. 상태로 흐름 표현
+CREATE TABLE IF NOT EXISTS mijung_delegations (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  delegate_user_id INT NOT NULL,
+  relation VARCHAR(50) NULL,            -- '자녀', '배우자' 등 표시용
+  status ENUM('pending', 'active', 'revoked') NOT NULL DEFAULT 'pending',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_owner_delegate (owner_user_id, delegate_user_id),
+  KEY idx_owner (owner_user_id, status),
+  KEY idx_delegate (delegate_user_id, status),
+  CONSTRAINT fk_del_owner FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_del_delegate FOREIGN KEY (delegate_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT chk_self CHECK (owner_user_id <> delegate_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

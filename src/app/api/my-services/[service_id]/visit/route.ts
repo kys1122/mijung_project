@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getEffectiveUserId } from '@/lib/auth';
 
 const ALLOWED_STEPS = ['description', 'required_docs', 'checklist', 'submitted'] as const;
 type Step = (typeof ALLOWED_STEPS)[number];
@@ -10,10 +10,10 @@ export async function POST(
   { params }: { params: Promise<{ service_id: string }> }
 ) {
   try {
-    const userId = getUserIdFromRequest(request);
+    const userId = await getEffectiveUserId(request);
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: "인증 필요" },
+        { success: false, message: "인증 필요 또는 대리 권한 없음" },
         { status: 401 }
       );
     }

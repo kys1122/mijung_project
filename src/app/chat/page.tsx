@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft, Check } from 'lucide-react';
+import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslations } from '../lib/i18n';
@@ -238,6 +238,21 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [sttError, setSttError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<number, 'up' | 'down'>>({});
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  const sendFeedback = async (idx: number, rating: 'up' | 'down') => {
+    if (feedback[idx] === rating) return;
+    setFeedback(prev => ({ ...prev, [idx]: rating }));
+    setFeedbackToast(rating === 'up' ? '소중한 피드백 감사해요 🙌' : '의견 감사해요. 더 좋은 답변을 위해 노력할게요');
+    setTimeout(() => setFeedbackToast(null), 2500);
+    try {
+      await apiFetch('/api/chat-feedback', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: chatSessionId, rating }),
+      });
+    } catch (e) { console.error('feedback 실패:', e); }
+  };
   const [chatSessionId, setChatSessionId] = useState<number | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -795,11 +810,47 @@ export default function ChatPage() {
           {messages.map((m, i) => {
             if (m.kind === 'text') {
               const isUser = m.role === 'user';
+              if (isUser) {
+                return (
+                  <div key={i} className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap leading-relaxed shadow-sm ${sizeBubble} ${userBubble} self-end rounded-tr-md`}>
+                    {m.content}
+                  </div>
+                );
+              }
+              // assistant text — content + 평가 버튼
+              const isFreechatAnswer = m.content && m.content.length > 40; // 단순 휴리스틱: 자유 채팅 응답 (긴 응답)에만 노출
+              const rated = feedback[i];
               return (
-                <div key={i} className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap leading-relaxed shadow-sm ${sizeBubble} ${
-                  isUser ? `${userBubble} self-end rounded-tr-md` : `${botBubble} self-start rounded-tl-md border`
-                }`}>
-                  {m.content}
+                <div key={i} className="max-w-[85%] self-start flex flex-col gap-1.5">
+                  <div className={`px-4 py-2.5 rounded-2xl rounded-tl-md whitespace-pre-wrap leading-relaxed shadow-sm border ${sizeBubble} ${botBubble}`}>
+                    {m.content}
+                  </div>
+                  {isFreechatAnswer && getAccessToken() && (
+                    <div className="flex items-center gap-1 pl-1">
+                      <button
+                        onClick={() => sendFeedback(i, 'up')}
+                        aria-label="도움이 됐어요"
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors active:scale-90 ${
+                          rated === 'up'
+                            ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-emerald-100 text-emerald-700')
+                            : (isHighContrast ? 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-800' : 'text-ink-4 hover:text-emerald-600 hover:bg-emerald-50')
+                        }`}
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => sendFeedback(i, 'down')}
+                        aria-label="별로였어요"
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors active:scale-90 ${
+                          rated === 'down'
+                            ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-rose-100 text-rose-700')
+                            : (isHighContrast ? 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-800' : 'text-ink-4 hover:text-rose-600 hover:bg-rose-50')
+                        }`}
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -1070,6 +1121,7 @@ export default function ChatPage() {
           )}
           <div className="flex items-end gap-2">
             <button onClick={isRecording ? stopRec : startRec} disabled={!inputEnabled || sending}
+              data-tour="chat-mic"
               className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-colors shadow-sm disabled:opacity-40 ${micBtn}`}
               aria-label={isRecording ? (lang === 'en' ? 'Stop recording' : '녹음 중지') : (lang === 'en' ? 'Start voice input' : '음성 입력 시작')}
               aria-pressed={isRecording}>
@@ -1092,6 +1144,13 @@ export default function ChatPage() {
         </div>
       </div>
       <BottomNav />
+
+      {/* 피드백 토스트 */}
+      {feedbackToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-ink-1 text-white text-sm font-medium shadow-lg ui-enter pointer-events-none">
+          {feedbackToast}
+        </div>
+      )}
     </div>
   );
 }

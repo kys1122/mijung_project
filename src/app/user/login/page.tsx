@@ -34,7 +34,13 @@ const LoginScreen: React.FC = () => {
       if (result.success) {
         localStorage.setItem('accessToken', result.data.accessToken);
         localStorage.setItem('refreshToken', result.data.refreshToken);
-        router.push(returnTo);
+        // 온보딩 안 본 사용자는 메인 페이지에서 코치마크 자동 시작
+        const onboarded = localStorage.getItem('onboarded') === 'true';
+        if (!onboarded) {
+          router.push('/?tour=1');
+        } else {
+          router.push(returnTo);
+        }
       } else {
         setErrorMsg(result.message ?? "이메일 또는 비밀번호를 다시 확인해주세요.");
       }

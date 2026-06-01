@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getEffectiveUserId } from '@/lib/auth';
 
 //  URL에서 괄호, 공백, 한글을 제거하고 순수 주소만 추출하는 안전장치 함수
 const getPureLink = (rawLink: string | null) => {
@@ -19,7 +19,7 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
         const resolvedParams = await params;
         const service_id = decodeURIComponent(resolvedParams.service_id);
 
-        const userId = getUserIdFromRequest(request);
+        const userId = await getEffectiveUserId(request);
 
         // analyze 결과로부터 넘어온 service_name도 지원
         // service_sources에 raw_* 데이터가 없는 서비스도 services 정보만으로 표시되도록 LEFT JOIN

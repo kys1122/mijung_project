@@ -258,3 +258,25 @@ a {
 .ui-enter {
   animation: ui-fade-in-up 320ms var(--easing-out);
 }
+
+/* 코치마크 펄스 — 강조 박스 둘레 brand 색 빛이 확장됨 */
+@keyframes ui-coach-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.45); }
+  70%  { box-shadow: 0 0 0 14px rgba(59,130,246,0); }
+  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+.animate-coach-pulse {
+  animation: ui-coach-pulse 1.6s var(--easing-out) infinite;
+  border-radius: 1rem;
+}
+
+/* iOS 액션시트 — 하단에서 슬라이드업 */
+@keyframes ui-sheet-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-sheet-up {
+  animation: ui-sheet-up 380ms var(--easing-spring);
+}
+
+/* 투어 활성 중에도 하단 네비는 보이게. 시트가 네비 위로 떠 있도록 시트 자체를 bottom 16px+nav-h만큼 띄움 */

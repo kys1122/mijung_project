@@ -3,13 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import Image from "next/image";
 import Link from 'next/link';
-import { LogOut, ClipboardList, Search, MessageCircle, ChevronRight, Sparkles } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { LogOut, ClipboardList, Search, MessageCircle, ChevronRight, Sparkles, Users, HelpCircle } from 'lucide-react';
 import { apiFetch, clearTokens, getAccessToken } from '@/lib/api-client';
 import BottomNav from './components/BottomNav';
 
 type User = { id: number; email: string; name: string };
 
 const MainScreen: React.FC = () => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +90,7 @@ const MainScreen: React.FC = () => {
         <div className="mt-10 sm:mt-14 flex flex-col gap-3 ui-enter">
           {user ? (
             <>
-              <Link href="/chat" className="block">
+              <Link href="/chat" className="block" data-tour="chat-card">
                 <div className="ui-card-interactive p-5 sm:p-6 flex items-center gap-4 bg-gradient-to-br from-brand-600 to-brand-700 border-transparent text-white">
                   <div className="shrink-0 w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center">
                     <Sparkles className="w-6 h-6" />
@@ -101,7 +103,7 @@ const MainScreen: React.FC = () => {
                 </div>
               </Link>
 
-              <Link href="/dashboard" className="block">
+              <Link href="/dashboard" className="block" data-tour="dashboard-card">
                 <div className="ui-card-interactive p-5 flex items-center gap-4">
                   <div className="shrink-0 w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center">
                     <ClipboardList className="w-6 h-6 text-brand-600" />
@@ -114,7 +116,7 @@ const MainScreen: React.FC = () => {
                 </div>
               </Link>
 
-              <Link href="/recommend" className="block">
+              <Link href="/recommend" className="block" data-tour="recommend-card">
                 <div className="ui-card-interactive p-5 flex items-center gap-4">
                   <div className="shrink-0 w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center">
                     <Search className="w-6 h-6 text-ink-2" />
@@ -126,6 +128,33 @@ const MainScreen: React.FC = () => {
                   <ChevronRight className="w-5 h-5 text-ink-4" />
                 </div>
               </Link>
+
+              <Link href="/account" className="block" data-tour="account-card">
+                <div className="ui-card-interactive p-5 flex items-center gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-base font-semibold text-ink-1">가족·도우미와 함께 보기</p>
+                    <p className="text-sm text-ink-3 mt-0.5">자녀나 도우미에게 내 민원을 공유</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-ink-4" />
+                </div>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => router.push('/?tour=1')}
+                className="text-left w-full ui-card-interactive p-4 flex items-center gap-3 active:scale-[0.99] transition-transform"
+              >
+                <div className="shrink-0 w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
+                  <HelpCircle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-semibold text-ink-1">앱 안내 다시 보기</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-ink-4" />
+              </button>
             </>
           ) : (
             <>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Building2, Check, ChevronLeft, FileText, MessageCircle, Sparkles, Monitor } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import DetailModal from "./detailModal";
 import TopSettings from "@/app/components/TopSettings";
@@ -16,6 +16,9 @@ const DocumentScreen: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const sp = useSearchParams();
+  const onBehalfOf = sp.get('on_behalf_of');
+  const ctxQs = onBehalfOf ? `?on_behalf_of=${onBehalfOf}` : '';
 
   const [doc, setDoc] = useState<any[]>([]);
   const [pageTitle, setPageTitle] = useState<string>("");
@@ -26,7 +29,7 @@ const DocumentScreen: React.FC = () => {
     const fetchRequiredDocs = async () => {
       if (!id) return;
       try {
-        const res = await apiFetch(`/api/required-docs/${id}`);
+        const res = await apiFetch(`/api/required-docs/${id}${ctxQs}`);
         const data = await res.json();
         const docs = data.document || [];
         setDoc(docs);
@@ -57,10 +60,14 @@ const DocumentScreen: React.FC = () => {
 
   useEffect(() => {
     if (!id || !getAccessToken()) return;
-    apiFetch(`/api/my-services/${id}/visit`, {
+    apiFetch(`/api/my-services/${id}/visit${ctxQs}`, {
       method: 'POST',
       body: JSON.stringify({ step: 'required_docs' }),
     }).catch(err => console.error('visit 기록 실패:', err));
+    apiFetch(`/api/recent-views`, {
+      method: 'POST',
+      body: JSON.stringify({ service_id: Number(id) }),
+    }).catch(err => console.error('recent 기록 실패:', err));
   }, [id]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,7 +81,7 @@ const DocumentScreen: React.FC = () => {
 
     if (!getAccessToken()) return;
     try {
-      const res = await apiFetch(`/api/checklist/${id}/progress`, {
+      const res = await apiFetch(`/api/checklist/${id}/progress${ctxQs}`, {
         method: 'PUT',
         body: JSON.stringify({ item_id: `doc_${docId}`, checked: newChecked }),
       });
@@ -150,10 +157,10 @@ const DocumentScreen: React.FC = () => {
         <header className="pt-2 flex items-center justify-between gap-2 ui-enter">
           <button
             onClick={() => router.back()}
-            className={`inline-flex items-center gap-1 -ml-2 px-3 py-2 rounded-xl transition-colors hover:bg-black/5 ${titleColor}`}
+            className={`inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-full transition-colors hover:bg-black/5 ${titleColor}`}
+            aria-label={t.back}
           >
-            <ChevronLeft className="w-5 h-5" />
-            <span className={`font-medium ${sizeBody}`}>{t.back}</span>
+            <ChevronLeft className="w-6 h-6" />
           </button>
           <TopSettings
             lang={lang} setLang={handleLang}
@@ -331,14 +338,27 @@ const DocumentScreen: React.FC = () => {
 
                     <button
                       onClick={() => Complete(d.id)}
-                      className="mt-1 flex items-center gap-2.5 group"
+                      className={`mt-1 w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl text-base font-bold transition-all active:scale-[0.98] ${
+                        d.isCompleted
+                          ? (isHighContrast
+                              ? 'bg-yellow-400 text-black hover:bg-yellow-300'
+                              : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_4px_12px_rgba(16,185,129,0.25)]')
+                          : (isHighContrast
+                              ? 'bg-zinc-800 text-yellow-400 border-2 border-yellow-400 border-dashed hover:bg-zinc-700'
+                              : 'bg-emerald-50 text-emerald-700 border-2 border-emerald-300 border-dashed hover:bg-emerald-100')
+                      }`}
+                      aria-pressed={d.isCompleted}
                     >
-                      <span className={`w-7 h-7 flex items-center justify-center rounded-lg border-2 transition-all ${d.isCompleted ? checkboxOn : checkboxOff} group-hover:scale-105`}>
-                        {d.isCompleted && <Check className="w-5 h-5 text-white" strokeWidth={3} />}
+                      <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full ${
+                        d.isCompleted
+                          ? (isHighContrast ? 'bg-black/20' : 'bg-white/25')
+                          : (isHighContrast ? 'bg-yellow-400/10 border border-yellow-400/50' : 'bg-white border-2 border-emerald-400')
+                      }`}>
+                        {d.isCompleted && <Check className="w-4 h-4" strokeWidth={3} />}
                       </span>
-                      <span className={`font-semibold ${d.isCompleted ? subtleColor : titleColor} ${sizeBody}`}>
-                        {t.done}
-                      </span>
+                      {d.isCompleted
+                        ? (lang === 'en' ? 'Ready ✓' : '준비 완료')
+                        : (lang === 'en' ? 'Mark as ready' : '준비 완료 표시')}
                     </button>
                   </div>
                 </div>

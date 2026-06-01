@@ -35,6 +35,8 @@ const SignupScreen: React.FC = () => {
       });
       const result = await response.json();
       if (result.success) {
+        // 첫 로그인 시 온보딩 보여주기 위한 플래그 초기화
+        try { localStorage.removeItem('onboarded'); } catch {}
         router.push("/user/login");
       } else {
         setServerError(result.message ?? "회원가입에 실패했어요.");
