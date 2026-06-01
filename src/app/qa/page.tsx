@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Mic, Sparkles } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
@@ -8,6 +8,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as QA_STRINGS, type QaStrings } from '../lib/strings/qa';
 import { type LangCode } from '../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 
 const ALLOWED_NEXT = new Set(['/chat', '/recommend', '/list', '/dashboard']);
 
@@ -20,7 +21,7 @@ type Question = {
   sort_order?: number;
 };
 
-export default function QaPage() {
+function QaPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next');
@@ -29,6 +30,7 @@ export default function QaPage() {
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
   const [lang, setLang] = useAppLang();
+  const tr = useT();
 
   const [rootQuestions, setRootQuestions] = useState<Question[]>([]);
   const [history, setHistory] = useState<Array<{ q: Question; answer: string }>>([]);
@@ -227,7 +229,7 @@ export default function QaPage() {
       <div className={`min-h-screen flex items-center justify-center ${pageBg}`}>
         <div className="flex flex-col items-center gap-3">
           <div className={`w-8 h-8 border-3 ${progressBg} border-t-blue-500 rounded-full animate-spin`}></div>
-          <p className={subtleColor}>{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
+          <p className={subtleColor}>{tr('불러오는 중...')}</p>
         </div>
       </div>
     );
@@ -243,7 +245,7 @@ export default function QaPage() {
               className={`flex items-center gap-1 -ml-2 p-2 rounded-lg hover:bg-black/5 transition-colors ${titleColor}`}
             >
               <ChevronLeft className="w-6 h-6" />
-              <span className={sizeBody}>{lang === 'en' ? 'Back' : '이전'}</span>
+              <span className={sizeBody}>{tr('이전')}</span>
             </button>
           ) : (
             <div />
@@ -310,7 +312,7 @@ export default function QaPage() {
               ) : (
                 <div className="mt-6 flex flex-col gap-3">
                   <textarea
-                    placeholder={lang === 'en' ? 'Type your question...' : '궁금한 점을 자유롭게 적어주세요.'}
+                    placeholder={tr('궁금한 점을 자유롭게 적어주세요.')}
                     className={`w-full h-32 p-4 rounded-xl border resize-none outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium ${inputBg} ${sizeOption}`}
                     value={freeText}
                     onChange={(e) => setFreeText(e.target.value)}
@@ -326,7 +328,7 @@ export default function QaPage() {
               )}
             </>
           ) : (
-            <p className={subtleColor}>{lang === 'en' ? 'No questions available' : '표시할 질문이 없습니다'}</p>
+            <p className={subtleColor}>{tr('표시할 질문이 없습니다')}</p>
           )}
         </main>
 
@@ -339,11 +341,11 @@ export default function QaPage() {
             {submitting ? (
               <>
                 <Sparkles className="w-5 h-5 animate-pulse" />
-                {lang === 'en' ? 'Finding services...' : '맞춤 민원 찾는 중...'}
+                {tr('맞춤 민원 찾는 중...')}
               </>
             ) : (
               <>
-                {lang === 'en' ? 'Next' : '다음'}
+                {tr('다음')}
                 <ChevronRight className="w-5 h-5" />
               </>
             )}
@@ -373,5 +375,13 @@ export default function QaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function QaPage() {
+  return (
+    <Suspense fallback={null}>
+      <QaPageInner />
+    </Suspense>
   );
 }

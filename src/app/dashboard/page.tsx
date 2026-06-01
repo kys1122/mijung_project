@@ -14,6 +14,7 @@ import { useServiceTranslations } from "../lib/use-service-translations";
 import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 
 type Step = 'description' | 'required_docs' | 'checklist' | 'submitted';
 
@@ -92,6 +93,7 @@ const DashboardScreen: React.FC = () => {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useT();
   const tSet = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const fetchServices = async (onBehalfOf?: number | null) => {
@@ -188,10 +190,10 @@ const DashboardScreen: React.FC = () => {
     submitted,
   };
   const donutSegments = [
-    { label: lang === 'en' ? 'Exploring' : '둘러보는 중',        value: stepCounts.description,   color: '#cbd5e1' },
-    { label: lang === 'en' ? 'Documents' : '준비물 확인 중',      value: stepCounts.required_docs, color: '#f59e0b' },
-    { label: lang === 'en' ? 'Checklist' : '체크리스트 진행 중',  value: stepCounts.checklist,     color: '#2563eb' },
-    { label: lang === 'en' ? 'Completed' : '완료',                value: stepCounts.submitted,     color: '#10b981' },
+    { label: tr('둘러보는 중'),        value: stepCounts.description,   color: '#cbd5e1' },
+    { label: tr('준비물 확인 중'),      value: stepCounts.required_docs, color: '#f59e0b' },
+    { label: tr('체크리스트 진행 중'),  value: stepCounts.checklist,     color: '#2563eb' },
+    { label: tr('완료'),                value: stepCounts.submitted,     color: '#10b981' },
   ];
   const totalServices = services.length;
 
@@ -222,7 +224,7 @@ const DashboardScreen: React.FC = () => {
         {activeDelegators.length > 0 && (
           <div className="mt-4 ui-card p-3 flex items-center gap-2 ui-enter">
             <Users className="w-4 h-4 text-brand-600 shrink-0" />
-            <span className="text-xs text-ink-3 shrink-0">{lang === 'en' ? 'Viewing as:' : '보는 사람:'}</span>
+            <span className="text-xs text-ink-3 shrink-0">{tr('보는 사람:')}</span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => switchToDelegate(null)}
@@ -250,13 +252,13 @@ const DashboardScreen: React.FC = () => {
             <div className="mx-auto w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center">
               <FilePlus2 className="w-8 h-8 text-brand-600" />
             </div>
-            <p className="mt-5 text-lg font-semibold text-ink-1">{lang === 'en' ? 'No services in progress yet' : '아직 진행 중인 민원이 없어요'}</p>
-            <p className="mt-1.5 text-sm text-ink-3">{lang === 'en' ? 'Browse services and pick one to start' : '민원 목록에서 원하는 민원을 시작해보세요'}</p>
+            <p className="mt-5 text-lg font-semibold text-ink-1">{tr('아직 진행 중인 민원이 없어요')}</p>
+            <p className="mt-1.5 text-sm text-ink-3">{tr('민원 목록에서 원하는 민원을 시작해보세요')}</p>
             <button
               onClick={() => router.push('/recommend')}
               className="ui-btn-primary w-full mt-6"
             >
-              {lang === 'en' ? 'Find services' : '민원 찾아보기'}
+              {tr('민원 찾아보기')}
             </button>
           </div>
         ) : (
@@ -277,7 +279,7 @@ const DashboardScreen: React.FC = () => {
                     <div className="flex-1 p-5 sm:p-6">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-brand-600" />
-                        <span className="ui-section-label text-brand-700">{lang === 'en' ? 'Continue' : '이어서 진행하기'}</span>
+                        <span className="ui-section-label text-brand-700">{tr('이어서 진행하기')}</span>
                       </div>
                       <div className="mt-3 flex items-center gap-3">
                         <div className={`shrink-0 w-12 h-12 rounded-2xl ${cat.bg} flex items-center justify-center text-2xl`}>
@@ -298,7 +300,7 @@ const DashboardScreen: React.FC = () => {
                       </div>
                       <div className="mt-4 flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-ink-2">
-                          {lang === 'en' ? 'Next: ' : '다음: '}<span className="text-ink-1">{hint.label}</span>
+                          {tr('다음:')} <span className="text-ink-1">{hint.label}</span>
                         </p>
                         <span className="text-sm font-semibold text-brand-600 inline-flex items-center gap-0.5">
                           {hint.cta}
@@ -315,7 +317,7 @@ const DashboardScreen: React.FC = () => {
               <section data-tour="favorites-section" className="mt-6 ui-enter" style={{ animationDelay: '70ms' }}>
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
-                  <h2 className="text-sm font-bold text-ink-1">{lang === 'en' ? 'Favorites' : '즐겨찾기'}</h2>
+                  <h2 className="text-sm font-bold text-ink-1">{tr('즐겨찾기')}</h2>
                   <span className="text-xs text-ink-4 tabular-nums">{favorites.length}</span>
                 </div>
                 <div className="flex gap-2 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap pb-1">
@@ -381,12 +383,12 @@ const DashboardScreen: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={meta.chip}>{lang === 'en' ? meta.en : meta.ko}</span>
+                          <span className={meta.chip}>{tr(meta.ko)}</span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cat.bg} ${cat.text}`}>
                             {categoryLabel(cat, lang)}
                           </span>
                           {svc.completed_count > 0 && (
-                            <span className="text-xs text-ink-4">{lang === 'en' ? `${svc.completed_count} checked` : `체크 ${svc.completed_count}개`}</span>
+                            <span className="text-xs text-ink-4">{tr('체크')} {svc.completed_count}{tr('개')}</span>
                           )}
                         </div>
                         <h2 className="mt-2 text-base sm:text-lg font-bold text-ink-1 truncate">{svc.name}</h2>
@@ -413,7 +415,7 @@ const DashboardScreen: React.FC = () => {
                             )}
                           </div>
                         )}
-                        <p className="mt-2 text-xs text-ink-4">{timeAgo(svc.updated_at, lang)}{lang === 'en' ? '' : ' 활동'}</p>
+                        <p className="mt-2 text-xs text-ink-4">{timeAgo(svc.updated_at, lang)} {tr('활동')}</p>
                       </div>
                       <div className="shrink-0 flex flex-col items-center gap-1 ml-1 mt-1" onClick={(e) => e.stopPropagation()}>
                         {!viewingAs && (
@@ -432,7 +434,7 @@ const DashboardScreen: React.FC = () => {
               <section className="mt-8 ui-enter">
                 <div className="flex items-center gap-2 mb-3 px-1">
                   <History className="w-4 h-4 text-ink-3" />
-                  <h2 className="text-sm font-bold text-ink-1">{lang === 'en' ? 'Recently viewed' : '최근 본 민원'}</h2>
+                  <h2 className="text-sm font-bold text-ink-1">{tr('최근 본 민원')}</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {recents

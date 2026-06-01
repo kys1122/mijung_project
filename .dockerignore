@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js
+.next
+out
+
+# 환경변수 (compose env_file로 주입)
+.env
+.env.*
+!.env.example
+
+# 개발/IDE
+.vscode
+.idea
+.DS_Store
+
+# i18n 디스크 캐시 (런타임에 생성됨)
+.cache
+
+# 문서/플랜
+docs
+
+# Docker 메타
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# 빌드 산출물/임시
+*.tsbuildinfo
+coverage

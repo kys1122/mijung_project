@@ -122,6 +122,18 @@ CREATE TABLE IF NOT EXISTS mijung_chat_feedback (
   CONSTRAINT fk_fb_message FOREIGN KEY (message_id) REFERENCES mijung_chat_messages(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 자유 텍스트 번역 캐시 — source_text 해시 + lang 기반. step/doc/free chat 응답 등 동적 텍스트용
+CREATE TABLE IF NOT EXISTS mijung_text_translations (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  source_hash CHAR(40) NOT NULL,
+  lang VARCHAR(8) NOT NULL,
+  source_text TEXT NOT NULL,
+  translated_text TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_hash_lang (source_hash, lang),
+  KEY idx_lang (lang)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 민원 데이터 번역 캐시 — LLM 번역 결과를 (service_id, lang)별로 한 번만 캐시
 CREATE TABLE IF NOT EXISTS mijung_service_translations (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,

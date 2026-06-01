@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { Suspense, useState } from "react"
 import Link from "next/link";
 import { Eye, EyeOff, Check } from 'lucide-react';
 import { useRouter, useSearchParams } from "next/navigation";
@@ -152,4 +152,10 @@ const LoginScreen: React.FC = () => {
   );
 }
 
-export default LoginScreen;
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginScreen />
+    </Suspense>
+  );
+}

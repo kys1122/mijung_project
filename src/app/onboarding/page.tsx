@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sparkles, ClipboardCheck, Mic, AArrowUp, SunMoon, Languages, Users, ChevronRight, ChevronLeft, X,
@@ -78,7 +78,7 @@ const SLIDES: Slide[] = [
   },
 ];
 
-export default function OnboardingScreen() {
+function OnboardingScreenInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const after = searchParams.get('after');
@@ -191,5 +191,13 @@ export default function OnboardingScreen() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingScreenInner />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { type LangCode } from '../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 import { getCategoryMeta, CATEGORY_META, categoryLabel, type Category } from '@/lib/category';
 import { useServiceTranslations } from '../lib/use-service-translations';
 
@@ -84,6 +85,7 @@ const RecommendScreen: React.FC = () => {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useT();
 
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
@@ -194,8 +196,8 @@ const RecommendScreen: React.FC = () => {
     <div className={`min-h-screen ${pageBg}`}>
       <div className="mx-auto max-w-md sm:max-w-3xl lg:max-w-5xl px-5 sm:px-8 pb-28">
         <PageHeader
-          title={lang === 'en' ? 'Services' : '민원 둘러보기'}
-          subtitle={lang === 'en' ? 'Search, browse, or get a personalized match' : '검색·둘러보기·맞춤 추천 한 곳에서'}
+          title={tr('민원 둘러보기')}
+          subtitle={tr('검색·둘러보기·맞춤 추천 한 곳에서')}
           right={
             <TopSettings
               lang={lang} setLang={setLang}
@@ -213,7 +215,7 @@ const RecommendScreen: React.FC = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={lang === 'en' ? 'Search civil services...' : '예: 기초연금, 건강보험, 외국인 등록...'}
+              placeholder={tr('예: 기초연금, 건강보험, 외국인 등록...')}
               className={`w-full pl-11 pr-28 h-14 rounded-2xl border outline-none focus:ring-2 focus:ring-brand-500/15 focus:border-brand-500 transition-colors text-base ${inputBg}`}
             />
             <button
@@ -223,7 +225,7 @@ const RecommendScreen: React.FC = () => {
             >
               {searchLoading
                 ? <Loader2 className="w-4 h-4 animate-spin" />
-                : (lang === 'en' ? 'Search' : '검색')}
+                : (tr('검색'))}
             </button>
           </div>
         </form>
@@ -235,7 +237,7 @@ const RecommendScreen: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
                 <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
-                  {lang === 'en' ? 'Search results' : '검색 결과'}
+                  {tr('검색 결과')}
                 </h2>
                 <span className={`font-medium ${subtleColor} ${sizeCardDesc}`}>
                   &quot;{searchedQuery}&quot;
@@ -245,17 +247,17 @@ const RecommendScreen: React.FC = () => {
                 onClick={clearSearch}
                 className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-zinc-400 hover:text-zinc-200' : 'text-slate-600 hover:text-slate-800'}`}
               >
-                {lang === 'en' ? 'Clear' : '지우기'}
+                {tr('지우기')}
               </button>
             </div>
 
             {searchHits.length === 0 ? (
               <div className={`mt-3 ${cardStaticCls} p-6 text-center`}>
                 <p className={`${titleColor} ${sizeCardTitle}`}>
-                  {lang === 'en' ? 'No matches found' : '검색 결과가 없어요'}
+                  {tr('검색 결과가 없어요')}
                 </p>
                 <p className={`mt-1 ${subtleColor} text-sm`}>
-                  {lang === 'en' ? 'Try different keywords or browse below' : '다른 키워드로 시도하거나 아래 전체 목록에서 찾아보세요'}
+                  {tr('다른 키워드로 시도하거나 아래 전체 목록에서 찾아보세요')}
                 </p>
               </div>
             ) : (
@@ -289,7 +291,7 @@ const RecommendScreen: React.FC = () => {
             <div className="flex items-center gap-2">
               <Sparkles className={`w-5 h-5 ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`} />
               <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
-                {lang === 'en' ? 'Matched for you' : '맞춤 추천'}
+                {tr('맞춤 추천')}
               </h2>
             </div>
             {aiSummary && (
@@ -324,7 +326,7 @@ const RecommendScreen: React.FC = () => {
         <section className="mt-8">
           <div className="flex items-center justify-between">
             <h2 className={`font-bold ${titleColor} ${sizeSection}`}>
-              {lang === 'en' ? 'All services' : '전체 민원'}
+              {tr('전체 민원')}
               {!allLoading && <span className={`ml-2 font-medium ${subtleColor} ${sizeCardDesc}`}>({filteredAll.length}{catFilter !== 'all' || query.trim() ? `/${all.length}` : ''})</span>}
             </h2>
             {recs.length === 0 && searchHits === null && (
@@ -332,7 +334,7 @@ const RecommendScreen: React.FC = () => {
                 onClick={() => router.push('/chat')}
                 className={`text-xs font-semibold transition-colors ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'}`}
               >
-                {lang === 'en' ? '+ Get recommendations' : '+ 맞춤 추천 받기'}
+                {tr('+ 맞춤 추천 받기')}
               </button>
             )}
           </div>
@@ -348,7 +350,7 @@ const RecommendScreen: React.FC = () => {
                     : (isHighContrast ? 'bg-zinc-900 text-yellow-400 border border-yellow-400/40' : 'bg-surface text-ink-2 border border-line-base hover:bg-surface-muted')
                 }`}
               >
-                {lang === 'en' ? 'All' : '전체'} <span className="opacity-70 text-xs tabular-nums">{all.length}</span>
+                {tr('전체')} <span className="opacity-70 text-xs tabular-nums">{all.length}</span>
               </button>
               {(Object.keys(CATEGORY_META) as Category[]).map((k) => {
                 const meta = CATEGORY_META[k];
@@ -377,12 +379,12 @@ const RecommendScreen: React.FC = () => {
           {allLoading ? (
             <div className="mt-8 flex flex-col items-center gap-3 text-slate-500">
               <div className="w-7 h-7 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin"></div>
-              <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
+              <p className="text-sm">{tr('불러오는 중...')}</p>
             </div>
           ) : filteredAll.length === 0 ? (
             <div className={`mt-4 ${cardStaticCls} p-6 text-center`}>
               <p className={`${titleColor} ${sizeCardTitle}`}>
-                {lang === 'en' ? 'No services match' : '검색 결과가 없어요'}
+                {tr('검색 결과가 없어요')}
               </p>
             </div>
           ) : (
@@ -419,7 +421,7 @@ const RecommendScreen: React.FC = () => {
                         </div>
                       )}
                       <div className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold self-start ${isHighContrast ? 'text-yellow-400' : 'text-brand-600'} group-hover:gap-2 transition-all`}>
-                        {lang === 'en' ? 'View' : '자세히 보기'}
+                        {tr('자세히 보기')}
                         <ChevronRight className="w-3.5 h-3.5" />
                       </div>
                     </div>

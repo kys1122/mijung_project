@@ -1,6 +1,7 @@
 import { executeQuery } from "@/lib/database";
 import { NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/lib/auth";
+import { cachedTranslateBatch } from "@/lib/translate-cache";
 
 const getPureLink = (rawLink : string | null) => {
     if (!rawLink) return null;
@@ -166,10 +167,35 @@ export async function GET(request : Request, {params} : {params: Promise<{ servi
             });
         }
 
+        const reqUrl = new URL(request.url);
+        const lang = reqUrl.searchParams.get('lang') ?? 'ko';
+        let title = data.service_name;
+        if (lang !== 'ko') {
+            const docTexts = documents.flatMap((d: any) => [
+                d.title ?? '', d.description ?? '', d.institution ?? '',
+                ...(Array.isArray(d.detail?.requirements) ? d.detail.requirements : []),
+                d.detail?.warning ?? ''
+            ]);
+            try {
+                const all = await cachedTranslateBatch([data.service_name, ...docTexts], lang);
+                title = all[0] || data.service_name;
+                let i = 1;
+                for (const d of documents) {
+                    d.title = all[i++] || d.title;
+                    d.description = all[i++] || d.description;
+                    d.institution = all[i++] || d.institution;
+                    if (Array.isArray(d.detail?.requirements)) {
+                        d.detail.requirements = d.detail.requirements.map(() => all[i++] || '');
+                    }
+                    if (d.detail) d.detail.warning = all[i++] || d.detail.warning;
+                }
+            } catch (e) { console.error('required-docs i18n 실패:', e); }
+        }
+
         return NextResponse.json({
             id: data.id,
-            title: data.service_name, 
-            document: documents       
+            title,
+            document: documents
         }, {status: 200});
 
     } catch (error) {

@@ -2,16 +2,18 @@
 
 import { Building2, Check, ChevronLeft, FileText, MessageCircle, Sparkles, Monitor } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import DetailModal from "./detailModal";
 import TopSettings from "@/app/components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as DOC_STRINGS, type DocumentStrings } from '../../../lib/strings/document';
 import { type LangCode } from '../../../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../../../lib/app-prefs';
+import { useT } from '../../../lib/use-t';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
 import ChecklistRenderer from '../../../components/ChecklistRenderer';
+import { tDocTitle } from '../../../lib/chat-options-i18n';
 
 const DocumentScreen: React.FC = () => {
   const router = useRouter();
@@ -26,11 +28,18 @@ const DocumentScreen: React.FC = () => {
   const [llmChecklist, setLlmChecklist] = useState<string>("");
   const [llmLoading, setLlmLoading] = useState(false);
 
+  // 접근성 토글 (lang 위쪽에서 정의 — fetchRequiredDocs에서 lang 사용)
+  const [lang, setLang] = useAppLang();
+  const [isHighContrast, setIsHighContrast] = useAppContrast();
+  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tx = useT();
+
   useEffect(() => {
     const fetchRequiredDocs = async () => {
       if (!id) return;
       try {
-        const res = await apiFetch(`/api/required-docs/${id}${ctxQs}`);
+        const sep = ctxQs ? '&' : '?';
+        const res = await apiFetch(`/api/required-docs/${id}${ctxQs}${sep}lang=${lang}`);
         const data = await res.json();
         const docs = data.document || [];
         setDoc(docs);
@@ -57,7 +66,8 @@ const DocumentScreen: React.FC = () => {
       }
     };
     fetchRequiredDocs();
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lang]);
 
   useEffect(() => {
     if (!id || !getAccessToken()) return;
@@ -96,10 +106,6 @@ const DocumentScreen: React.FC = () => {
     setSelectedDoc(docItem);
     setModalOpen(true);
   };
-
-  const [lang, setLang] = useAppLang();
-  const [isHighContrast, setIsHighContrast] = useAppContrast();
-  const [isLargeFont, setIsLargeFont] = useAppLargeFont();
 
   const t = useTranslations<DocumentStrings>('document', DOC_STRINGS as unknown as { ko: DocumentStrings; en: DocumentStrings }, lang);
 
@@ -144,11 +150,12 @@ const DocumentScreen: React.FC = () => {
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pt-4 pb-28">
         <header className="pt-2 flex items-center justify-between gap-2 ui-enter">
           <button
-            onClick={() => router.back()}
-            className={`inline-flex items-center justify-center w-11 h-11 -ml-2 rounded-full transition-colors hover:bg-black/5 ${titleColor}`}
-            aria-label={t.back}
+            onClick={() => router.push(`/list/procedure/${id}${ctxQs}`)}
+            className={`inline-flex items-center gap-1.5 px-3 h-11 -ml-2 rounded-full transition-colors hover:bg-black/5 ${titleColor}`}
+            aria-label={lang === 'en' ? 'Back to service' : '민원 진행으로'}
           >
             <ChevronLeft className="w-6 h-6" />
+            <span className="text-sm font-medium">{lang === 'en' ? 'Service' : '민원 진행'}</span>
           </button>
           <TopSettings
             lang={lang} setLang={setLang}
@@ -284,7 +291,7 @@ const DocumentScreen: React.FC = () => {
                       {d.id}
                     </span>
                     <h2 className={`flex-1 font-bold ${d.isCompleted ? subtleColor : titleColor} ${sizeDocTitle}`}>
-                      {d.title}
+                      {tDocTitle(d.title, lang)}
                     </h2>
                   </div>
 
@@ -365,4 +372,10 @@ const DocumentScreen: React.FC = () => {
   )
 }
 
-export default DocumentScreen;
+export default function DocumentPage() {
+  return (
+    <Suspense fallback={null}>
+      <DocumentScreen />
+    </Suspense>
+  );
+}

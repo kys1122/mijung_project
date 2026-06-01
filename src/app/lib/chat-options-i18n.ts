@@ -28,6 +28,7 @@ const CATEGORY: Record<string, Record<LangCode, string>> = {
   '출입국':         { ko: '출입국',        en: 'Immigration',       zh: '出入境',   vi: 'Xuất nhập cảnh', th: 'ตรวจคนเข้าเมือง', ja: '出入国',     tl: 'Imigrasyon',    id: 'Imigrasi',        my: 'လူဝင်မှုကြီးကြပ်ရေး', km: 'អន្តោប្រវេសន៍',  mn: 'Цагаачлал',    uz: 'Migratsiya', ne: 'अध्यागमन',         ru: 'Миграция' },
   '교육·문화':      { ko: '교육·문화',     en: 'Education & Culture', zh: '教育·文化', vi: 'Giáo dục & Văn hóa', th: 'การศึกษาและวัฒนธรรม', ja: '教育・文化', tl: 'Edukasyon at Kultura', id: 'Pendidikan & Budaya', my: 'ပညာရေး · ယဉ်ကျေးမှု', km: 'អប់រំ·វប្បធម៌', mn: 'Боловсрол · Соёл', uz: "Ta'lim va madaniyat", ne: 'शिक्षा · संस्कृति',   ru: 'Образование' },
   '잘 모르겠어요': { ko: '잘 모르겠어요',  en: "I'm not sure",      zh: '不确定',   vi: 'Tôi không chắc', th: 'ไม่แน่ใจ',     ja: 'よくわかりません', tl: 'Hindi sigurado', id: 'Tidak yakin',     my: 'မသေချာဘူး',     km: 'មិនច្បាស់',       mn: 'Мэдэхгүй',     uz: 'Bilmayman',  ne: 'थाहा छैन',         ru: 'Не уверен' },
+  '돌봄':          { ko: '돌봄',          en: 'Care',              zh: '照护',     vi: 'Chăm sóc',       th: 'การดูแล',       ja: 'ケア',         tl: 'Pangangalaga',  id: 'Perawatan',       my: 'ပြုစုစောင့်ရှောက်မှု', km: 'ការថែទាំ',         mn: 'Асрамж',       uz: "Parvarish",  ne: 'हेरचाह',          ru: 'Уход' },
 };
 
 function translate(label: string, table: Record<string, Record<LangCode, string>>, lang: LangCode): string {
@@ -49,3 +50,16 @@ const STEP_TITLE: Record<string, Record<LangCode, string>> = {
 };
 
 export function tStepTitle(label: string, lang: LangCode) { return translate(label, STEP_TITLE, lang); }
+
+// 자주 등장하는 한국어 서류명 — required-docs API 응답의 doc.title
+const DOC_TITLE: Record<string, Record<LangCode, string>> = {
+  '신분증':         { ko: '신분증',         en: 'ID card',           zh: '身份证',       vi: 'CMND/CCCD',         th: 'บัตรประชาชน',     ja: '身分証',          tl: 'ID',                  id: 'KTP',                  my: 'အထောက်အထား ကတ်',     km: 'អត្តសញ្ញាណប័ណ្ណ',          mn: 'Иргэний үнэмлэх', uz: 'Shaxsiy guvohnoma', ne: 'परिचयपत्र',          ru: 'Удостоверение' },
+  '주민등록증':     { ko: '주민등록증',     en: 'Resident ID',        zh: '居民身份证',   vi: 'CMND',              th: 'บัตรประชาชน',     ja: '住民登録証',      tl: 'Resident ID',         id: 'KTP',                  my: 'နေထိုင်ခွင့်ကတ်',         km: 'អត្តសញ្ញាណបណ្ណប្រជាជន',   mn: 'Иргэний үнэмлэх', uz: 'Yashash guvohnomasi', ne: 'नागरिकता',         ru: 'Удостоверение резидента' },
+  '운전면허증':     { ko: '운전면허증',     en: "Driver's license",   zh: '驾照',         vi: 'Bằng lái xe',        th: 'ใบขับขี่',         ja: '運転免許証',      tl: "Lisensya",            id: 'SIM',                  my: 'ယာဉ်မောင်းလိုင်စင်',     km: 'ប័ណ្ណបើកបរ',           mn: 'Жолооны үнэмлэх', uz: 'Haydovchilik guvohnomasi', ne: 'सवारी चालक अनुमतिपत्र', ru: 'Водит. удостоверение' },
+  '여권':           { ko: '여권',           en: 'Passport',           zh: '护照',         vi: 'Hộ chiếu',          th: 'หนังสือเดินทาง',   ja: 'パスポート',      tl: 'Pasaporte',           id: 'Paspor',               my: 'နိုင်ငံကူးလက်မှတ်',       km: 'លិខិតឆ្លងដែន',          mn: 'Гадаад паспорт',  uz: 'Pasport',         ne: 'राहदानी',          ru: 'Паспорт' },
+  '신청서':         { ko: '신청서',         en: 'Application form',   zh: '申请表',        vi: 'Đơn đăng ký',        th: 'แบบฟอร์มสมัคร',    ja: '申請書',          tl: 'Form ng aplikasyon',  id: 'Formulir aplikasi',    my: 'လျှောက်လွှာ',          km: 'ពាក្យសុំ',                mn: 'Өргөдөл',         uz: 'Ariza shakli',    ne: 'आवेदन फारम',       ru: 'Заявление' },
+  '신고서':         { ko: '신고서',         en: 'Declaration form',   zh: '申报表',        vi: 'Tờ khai',           th: 'แบบฟอร์มแจ้ง',     ja: '届出書',          tl: 'Form ng pahayag',     id: 'Formulir pernyataan',  my: 'အသိပေးချက်',          km: 'លិខិតប្រកាស',           mn: 'Мэдүүлэг',        uz: 'Deklaratsiya',    ne: 'घोषणापत्र',         ru: 'Декларация' },
+  '금융정보 등 제공 동의서': { ko: '금융정보 등 제공 동의서', en: 'Financial info consent form', zh: '金融信息提供同意书', vi: 'Đồng ý cung cấp thông tin tài chính', th: 'ใบยินยอมข้อมูลการเงิน', ja: '金融情報提供同意書', tl: 'Pahintulot ng impormasyong pampinansyal', id: 'Persetujuan info keuangan', my: 'ဘဏ္ဍာရေး အချက်အလက် သဘောတူခွင့်', km: 'យល់ព្រមផ្តល់ព័ត៌មានហិរញ្ញវត្ថុ', mn: 'Санхүүгийн мэдээлэл өгөх зөвшөөрөл', uz: 'Moliyaviy ma\'lumotga rozilik', ne: 'वित्तीय जानकारी सहमति', ru: 'Согласие на финансовые сведения' },
+  '통장 사본':       { ko: '통장 사본',       en: 'Bank passbook copy', zh: '存折复印件',    vi: 'Bản sao sổ tiết kiệm', th: 'สำเนาสมุดบัญชี',    ja: '通帳コピー',      tl: 'Kopya ng bankbook',    id: 'Salinan buku tabungan',  my: 'ဘဏ်စာအုပ်မိတ္တူ',         km: 'ច្បាប់ចម្លងសៀវភៅធនាគារ',  mn: 'Дансны хуулбар',  uz: 'Hisob kitobchasi nusxasi', ne: 'बैंक खाताको प्रतिलिपि', ru: 'Копия сберкнижки' },
+};
+export function tDocTitle(label: string, lang: LangCode) { return translate(label, DOC_TITLE, lang); }

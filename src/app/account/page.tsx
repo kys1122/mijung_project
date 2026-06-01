@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { type LangCode } from '../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 
 type Me = { id: number; email: string; name: string };
 type Delegation = {
@@ -22,10 +23,10 @@ type Delegation = {
   status: 'pending' | 'active' | 'revoked';
 };
 
-const STATUS_LABEL: Record<Delegation['status'], { label: string; chip: string }> = {
-  pending: { label: '수락 대기', chip: 'bg-amber-50 text-amber-800 border-amber-200' },
-  active:  { label: '활성',      chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  revoked: { label: '해제됨',    chip: 'bg-surface-muted text-ink-3 border-line-soft' },
+const STATUS_LABEL: Record<Delegation['status'], { ko: string; en: string; chip: string }> = {
+  pending: { ko: '수락 대기', en: 'Pending', chip: 'bg-amber-50 text-amber-800 border-amber-200' },
+  active:  { ko: '활성',      en: 'Active',  chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  revoked: { ko: '해제됨',    en: 'Revoked', chip: 'bg-surface-muted text-ink-3 border-line-soft' },
 };
 
 export default function AccountScreen() {
@@ -45,6 +46,7 @@ export default function AccountScreen() {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useT();
   const tSet = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
   const reload = async () => {
@@ -103,11 +105,11 @@ export default function AccountScreen() {
         setInviteRelation('');
         await reload();
       } else {
-        setInviteMsg({ kind: 'err', text: data?.message ?? (lang === 'en' ? 'Invitation failed.' : '초대에 실패했어요.') });
+        setInviteMsg({ kind: 'err', text: data?.message ?? (tr('초대에 실패했어요.')) });
       }
     } catch (e) {
       console.error('초대 실패:', e);
-      setInviteMsg({ kind: 'err', text: lang === 'en' ? 'Connection lost. Try again shortly.' : '연결이 끊겼어요. 잠시 후 다시 시도해 주세요.' });
+      setInviteMsg({ kind: 'err', text: tr('연결이 끊겼어요. 잠시 후 다시 시도해 주세요.') });
     } finally {
       setInviteLoading(false);
     }
@@ -122,7 +124,7 @@ export default function AccountScreen() {
   };
 
   const removeRelation = async (id: number) => {
-    if (!confirm(lang === 'en' ? 'Remove this relationship?' : '이 관계를 삭제할까요?')) return;
+    if (!confirm(tr('이 관계를 삭제할까요?'))) return;
     await apiFetch(`/api/delegations/${id}`, { method: 'DELETE' });
     await reload();
   };
@@ -133,8 +135,8 @@ export default function AccountScreen() {
     <div className="min-h-screen bg-surface-page pb-28">
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8">
         <PageHeader
-          title={lang === 'en' ? 'My Account' : '내 계정'}
-          subtitle={lang === 'en' ? 'Manage profile and family sharing' : '프로필과 가족 공유를 관리해요'}
+          title={tr('내 계정')}
+          subtitle={tr('프로필과 가족 공유를 관리해요')}
           right={
             <TopSettings
               lang={lang} setLang={setLang}
@@ -148,7 +150,7 @@ export default function AccountScreen() {
         {loading ? (
           <div className="mt-16 flex flex-col items-center gap-3 text-ink-3">
             <div className="w-8 h-8 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin" />
-            <p className="text-sm">불러오는 중...</p>
+            <p className="text-sm">{tr('불러오는 중...')}</p>
           </div>
         ) : (
           <>
@@ -164,10 +166,10 @@ export default function AccountScreen() {
               <button
                 onClick={handleLogout}
                 className="ui-btn-ghost"
-                aria-label="로그아웃"
+                aria-label={tr('로그아웃')}
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">로그아웃</span>
+                <span className="hidden sm:inline">{tr('로그아웃')}</span>
               </button>
             </div>
 
@@ -182,8 +184,8 @@ export default function AccountScreen() {
                 <Settings className="w-5 h-5 text-ink-2" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-ink-1">{lang === 'en' ? 'Account settings' : '계정 설정'}</p>
-                <p className="text-sm text-ink-3 mt-0.5">{lang === 'en' ? 'Change name, password, or delete account' : '이름·비밀번호 변경, 회원 탈퇴'}</p>
+                <p className="font-semibold text-ink-1">{tr('계정 설정')}</p>
+                <p className="text-sm text-ink-3 mt-0.5">{tr('이름·비밀번호 변경, 회원 탈퇴')}</p>
               </div>
               <span className="text-ink-4 text-lg">›</span>
             </button>
@@ -191,7 +193,7 @@ export default function AccountScreen() {
             {/* 받은 초대 — pending */}
             {pendingForMe.length > 0 && (
               <section className="mt-6 ui-enter" style={{ animationDelay: '60ms' }}>
-                <h2 className="ui-section-label mb-2">{lang === 'en' ? 'INVITATIONS RECEIVED' : '받은 초대'}</h2>
+                <h2 className="ui-section-label mb-2">{tr('받은 초대')}</h2>
                 <div className="flex flex-col gap-2">
                   {pendingForMe.map(d => (
                     <div key={d.id} className="ui-card p-4 flex items-center gap-3">
@@ -205,14 +207,14 @@ export default function AccountScreen() {
                       <button
                         onClick={() => updateStatus(d.id, 'active')}
                         className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-                        aria-label="수락"
+                        aria-label={tr('수락')}
                       >
                         <Check className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => updateStatus(d.id, 'revoked')}
                         className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-surface-muted text-ink-3 hover:bg-line-soft transition-colors"
-                        aria-label="거부"
+                        aria-label={tr('거부')}
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -226,7 +228,7 @@ export default function AccountScreen() {
             <section data-tour="account-invite" className="mt-6 ui-card p-5 ui-enter" style={{ animationDelay: '90ms' }}>
               <div className="flex items-center gap-2 mb-3">
                 <UserPlus className="w-5 h-5 text-brand-600" />
-                <h2 className="font-bold text-ink-1">{lang === 'en' ? 'Invite family or helper' : '가족·도우미 초대하기'}</h2>
+                <h2 className="font-bold text-ink-1">{tr('가족·도우미 초대하기')}</h2>
               </div>
               <p className="text-sm text-ink-3 mb-4 leading-relaxed">
                 {lang === 'en'
@@ -235,7 +237,7 @@ export default function AccountScreen() {
               </p>
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">이메일</label>
+                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">{tr('이메일')}</label>
                   <input
                     type="email"
                     placeholder="example@email.com"
@@ -245,7 +247,7 @@ export default function AccountScreen() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">{lang === 'en' ? 'Relationship (optional)' : '관계 (선택)'}</label>
+                  <label className="block text-sm font-semibold text-ink-2 mb-1.5">{tr('관계 (선택)')}</label>
                   <input
                     type="text"
                     placeholder="예: 자녀, 배우자, 도우미"
@@ -271,8 +273,8 @@ export default function AccountScreen() {
                 >
                   <Mail className="w-4 h-4" />
                   {inviteLoading
-                    ? (lang === 'en' ? 'Sending...' : '초대 보내는 중...')
-                    : (lang === 'en' ? 'Send invitation' : '초대 보내기')}
+                    ? (tr('초대 보내는 중...'))
+                    : (tr('초대 보내기'))}
                 </button>
               </div>
             </section>
@@ -280,7 +282,7 @@ export default function AccountScreen() {
             {/* 내가 초대한 사람들 */}
             {asOwner.length > 0 && (
               <section className="mt-6 ui-enter" style={{ animationDelay: '120ms' }}>
-                <h2 className="ui-section-label mb-2">{lang === 'en' ? 'PEOPLE I INVITED' : '내가 초대한 사람'}</h2>
+                <h2 className="ui-section-label mb-2">{tr('내가 초대한 사람')}</h2>
                 <div className="flex flex-col gap-2">
                   {asOwner.map(d => {
                     const meta = STATUS_LABEL[d.status];
@@ -294,12 +296,12 @@ export default function AccountScreen() {
                           <p className="text-xs text-ink-3 truncate">{d.email}</p>
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${meta.chip}`}>
-                          {meta.label}
+                          {lang === 'en' ? meta.en : meta.ko}
                         </span>
                         <button
                           onClick={() => removeRelation(d.id)}
                           className="text-ink-4 hover:text-danger hover:bg-danger/10 p-2 rounded-lg transition-colors"
-                          aria-label="관계 삭제"
+                          aria-label={tr('관계 삭제')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -327,7 +329,7 @@ export default function AccountScreen() {
                       <button
                         onClick={() => removeRelation(d.id)}
                         className="text-ink-4 hover:text-danger hover:bg-danger/10 p-2 rounded-lg transition-colors"
-                        aria-label="관계 해제"
+                        aria-label={tr('관계 해제')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

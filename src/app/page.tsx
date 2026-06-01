@@ -1,17 +1,42 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Image from "next/image";
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LogOut, ClipboardList, Search, MessageCircle, ChevronRight, Sparkles, Users, HelpCircle } from 'lucide-react';
 import { apiFetch, clearTokens, getAccessToken } from '@/lib/api-client';
 import BottomNav from './components/BottomNav';
+import { useAppLang } from './lib/app-prefs';
+import { useUiText } from './lib/use-ui-text';
+
+const HOME_KO = [
+  '민원, 어렵지 않아요',
+  '필요한 민원을 친절하게 안내해드릴게요',
+  '오늘은 어떤 도움이 필요하세요?',
+  '로그아웃',
+  '챗봇과 상담하기',
+  '몇 가지 질문에 답하면 맞춤 민원을 찾아드려요',
+  '내 민원 이어서 진행하기',
+  '진행 중인 민원을 한눈에 확인',
+  '민원 둘러보기',
+  '검색과 카테고리로 직접 찾기',
+  '가족·도우미와 함께 보기',
+  '자녀나 도우미에게 내 민원을 공유',
+  '앱 안내 다시 보기',
+  '시작하기',
+  '비회원으로 둘러보기',
+  '회원가입은 진행 중인 민원을 저장하고 이어서 볼 때 도움이 돼요',
+];
 
 type User = { id: number; email: string; name: string };
 
 const MainScreen: React.FC = () => {
   const router = useRouter();
+  const [lang] = useAppLang();
+  const { t: tr } = useUiText(HOME_KO);
+  // 한국어 키 그대로 호출 — lang === 'ko' 면 원문, 다른 언어는 LLM 자동 번역 (캐싱)
+  const t = (ko: string, _en?: string) => tr(ko);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,8 +64,10 @@ const MainScreen: React.FC = () => {
     setUser(null);
   };
 
-  const greeting = user ? `안녕하세요, ${user.name}님` : '민원, 어렵지 않아요';
-  const sub = user ? '오늘은 어떤 도움이 필요하세요?' : '필요한 민원을 친절하게 안내해드릴게요';
+  const greeting = user
+    ? (lang === 'ko' ? `안녕하세요, ${user.name}님` : `${tr('안녕하세요')} ${user.name}`)
+    : tr('민원, 어렵지 않아요');
+  const sub = user ? tr('오늘은 어떤 도움이 필요하세요?') : tr('필요한 민원을 친절하게 안내해드릴게요');
 
   return (
     <div className="min-h-screen bg-surface-page pb-28">
@@ -60,10 +87,10 @@ const MainScreen: React.FC = () => {
             <button
               onClick={handleLogout}
               className="ui-btn-ghost"
-              aria-label="로그아웃"
+              aria-label="Log out"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">로그아웃</span>
+              <span className="hidden sm:inline">{t('로그아웃', 'Log out')}</span>
             </button>
           </div>
         ) : (
@@ -96,8 +123,8 @@ const MainScreen: React.FC = () => {
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-base sm:text-lg font-bold">챗봇과 상담하기</p>
-                    <p className="text-sm text-white/80 mt-0.5">몇 가지 질문에 답하면 맞춤 민원을 찾아드려요</p>
+                    <p className="text-base sm:text-lg font-bold">{t('챗봇과 상담하기', 'Chat with the assistant')}</p>
+                    <p className="text-sm text-white/80 mt-0.5">{t('몇 가지 질문에 답하면 맞춤 민원을 찾아드려요', 'Answer a few questions and we’ll find the right services')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-white/80" />
                 </div>
@@ -109,8 +136,8 @@ const MainScreen: React.FC = () => {
                     <ClipboardList className="w-6 h-6 text-brand-600" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-base font-semibold text-ink-1">내 민원 이어서 진행하기</p>
-                    <p className="text-sm text-ink-3 mt-0.5">진행 중인 민원을 한눈에 확인</p>
+                    <p className="text-base font-semibold text-ink-1">{t('내 민원 이어서 진행하기', 'Continue my services')}</p>
+                    <p className="text-sm text-ink-3 mt-0.5">{t('진행 중인 민원을 한눈에 확인', 'Pick up where you left off')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-ink-4" />
                 </div>
@@ -122,8 +149,8 @@ const MainScreen: React.FC = () => {
                     <Search className="w-6 h-6 text-ink-2" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-base font-semibold text-ink-1">민원 둘러보기</p>
-                    <p className="text-sm text-ink-3 mt-0.5">검색과 카테고리로 직접 찾기</p>
+                    <p className="text-base font-semibold text-ink-1">{t('민원 둘러보기', 'Browse services')}</p>
+                    <p className="text-sm text-ink-3 mt-0.5">{t('검색과 카테고리로 직접 찾기', 'Search or browse by category')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-ink-4" />
                 </div>
@@ -135,8 +162,8 @@ const MainScreen: React.FC = () => {
                     <Users className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-base font-semibold text-ink-1">가족·도우미와 함께 보기</p>
-                    <p className="text-sm text-ink-3 mt-0.5">자녀나 도우미에게 내 민원을 공유</p>
+                    <p className="text-base font-semibold text-ink-1">{t('가족·도우미와 함께 보기', 'Share with family or helper')}</p>
+                    <p className="text-sm text-ink-3 mt-0.5">{t('자녀나 도우미에게 내 민원을 공유', 'Invite family to view your services with you')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-ink-4" />
                 </div>
@@ -151,7 +178,7 @@ const MainScreen: React.FC = () => {
                   <HelpCircle className="w-5 h-5 text-amber-600" />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold text-ink-1">앱 안내 다시 보기</p>
+                  <p className="text-sm font-semibold text-ink-1">{t('앱 안내 다시 보기', 'Replay app tour')}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-ink-4" />
               </button>
@@ -160,17 +187,17 @@ const MainScreen: React.FC = () => {
             <>
               <Link href="/user/login" className="block">
                 <button className="ui-btn-primary w-full text-base">
-                  시작하기
+                  {t('시작하기', 'Get started')}
                 </button>
               </Link>
               <Link href="/qa" className="block">
                 <button className="ui-btn-secondary w-full text-base">
                   <MessageCircle className="w-5 h-5" />
-                  비회원으로 둘러보기
+                  {t('비회원으로 둘러보기', 'Browse without account')}
                 </button>
               </Link>
               <p className="mt-3 text-center text-xs text-ink-4">
-                회원가입은 진행 중인 민원을 저장하고 이어서 볼 때 도움이 돼요
+                {t('회원가입은 진행 중인 민원을 저장하고 이어서 볼 때 도움이 돼요', "Sign up to save your services and continue later")}
               </p>
             </>
           )}
@@ -181,4 +208,10 @@ const MainScreen: React.FC = () => {
   );
 }
 
-export default MainScreen;
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <MainScreen />
+    </Suspense>
+  );
+}

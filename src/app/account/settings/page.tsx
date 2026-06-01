@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +7,7 @@ import { apiFetch, getAccessToken, clearTokens } from "@/lib/api-client";
 import BottomNav from "../../components/BottomNav";
 import PageHeader from "../../components/PageHeader";
 import { useAppLang } from "../../lib/app-prefs";
+import { useT } from "../../lib/use-t";
 
 type Me = { id: number; email: string; name: string };
 
@@ -15,7 +16,8 @@ export default function AccountSettingsScreen() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [lang] = useAppLang();
-  const t = (ko: string, en: string) => lang === 'en' ? en : ko;
+  const tr = useT();
+  const t = (ko: string, _en?: string) => tr(ko);
 
   // 이름 변경
   const [name, setName] = useState("");
@@ -114,7 +116,7 @@ export default function AccountSettingsScreen() {
     ));
     if (!ok) return;
     const phrase = prompt(t('계속하려면 "탈퇴"라고 정확히 입력해주세요.', 'Type "DELETE" exactly to continue.'));
-    const expected = lang === 'en' ? 'DELETE' : '탈퇴';
+    const expected = tr('탈퇴');
     if (phrase !== expected) return;
     setWithdrawing(true);
     try {

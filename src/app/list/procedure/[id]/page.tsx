@@ -2,12 +2,13 @@
 
 import { Check, ChevronLeft, ChevronRight, ExternalLink, FileText, Volume2, Building2, Coins, ScrollText, Info } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import TopSettings from "../../../components/TopSettings";
 import { useTranslations } from '../../../lib/i18n';
 import { STRINGS as PROC_STRINGS, type ProcedureStrings } from '../../../lib/strings/procedure';
 import { type LangCode } from '../../../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../../../lib/app-prefs';
+import { useT } from '../../../lib/use-t';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 import BottomNav from '../../../components/BottomNav';
 import RichTextRenderer from '../../../components/RichTextRenderer';
@@ -41,13 +42,15 @@ const ProcedureScreen: React.FC = () => {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tx = useT();
   const tr = useServiceTranslation(id, lang);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await apiFetch(`/api/checklist/${id}${ctxQs}`);
+        const sep = ctxQs ? '&' : '?';
+        const res = await apiFetch(`/api/checklist/${id}${ctxQs}${sep}lang=${lang}`);
         const data = await res.json();
         setStep(data.steps || []);
         setServiceName({
@@ -70,7 +73,8 @@ const ProcedureScreen: React.FC = () => {
       }
     };
     if (id) fetchData();
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lang]);
 
   const [isFavorited, setIsFavorited] = useState(false);
 
@@ -627,4 +631,10 @@ const ProcedureScreen: React.FC = () => {
   )
 }
 
-export default ProcedureScreen;
+export default function ProcedurePage() {
+  return (
+    <Suspense fallback={null}>
+      <ProcedureScreen />
+    </Suspense>
+  );
+}

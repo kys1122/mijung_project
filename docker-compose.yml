@@ -1,0 +1,30 @@
+# mijung_project — Docker Compose
+# 사용: docker compose up -d --build
+#
+# 가정:
+#   - DB(210.119.32.188:20008)와 챗봇(210.119.32.188:20003)은 외부에서 별도 운영 중
+#   - 이 컨테이너는 같은 서버(210.119.32.188)에 띄움, 외부 노출 포트 20001 (챗봇 CORS 허용 목록과 일치)
+#   - 환경변수는 .env.local 에서 읽어옴 (DB 비번 같은 민감 정보 포함)
+
+services:
+  mijung:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* 는 빌드 시 클라이언트 번들에 박힘. 공개 값이라 하드코딩 OK.
+        NEXT_PUBLIC_AI_API_URL: http://210.119.32.188:20003
+        NEXT_PUBLIC_API_URL: http://210.119.32.188:20001
+    image: mijung_project:latest
+    container_name: mijung_project
+    ports:
+      - "20001:3000"
+    env_file:
+      - .env.local
+    restart: unless-stopped
+    # i18n 디스크 캐시 영속화는 일단 보류. 활성화하려면 아래 주석 해제:
+    # volumes:
+    #   - i18n_cache:/app/.cache/i18n
+
+# volumes:
+#   i18n_cache:

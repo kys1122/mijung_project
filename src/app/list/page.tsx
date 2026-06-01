@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as LIST_STRINGS, type ListStrings } from '../lib/strings/list';
 import { type LangCode } from '../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 import { apiFetch, getAccessToken } from '@/lib/api-client';
 
 type ChatSession = {
@@ -44,6 +45,7 @@ const ListScreen: React.FC = () => {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useT();
 
   const t = useTranslations<ListStrings>('list', LIST_STRINGS as unknown as { ko: ListStrings; en: ListStrings }, lang);
 
@@ -73,7 +75,7 @@ const ListScreen: React.FC = () => {
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(lang === 'en' ? 'Delete this conversation?' : '이 대화를 삭제할까요?')) return;
+    if (!confirm(tr('이 대화를 삭제할까요?'))) return;
     try {
       await apiFetch(`/api/chat-sessions/${id}`, { method: 'DELETE' });
       setSessions(prev => prev.filter(s => s.id !== id));
@@ -98,8 +100,8 @@ const ListScreen: React.FC = () => {
     <div className={`min-h-screen ${pageBg}`}>
       <div className="mx-auto max-w-md sm:max-w-2xl px-5 sm:px-8 pb-28">
         <PageHeader
-          title={lang === 'en' ? 'My Questions' : '내 질문 기록'}
-          subtitle={lang === 'en' ? 'Past conversations with the chatbot' : '챗봇과 나눈 대화를 다시 볼 수 있어요'}
+          title={tr('내 질문 기록')}
+          subtitle={tr('챗봇과 나눈 대화를 다시 볼 수 있어요')}
           right={
             <TopSettings
               lang={lang} setLang={setLang}
@@ -114,13 +116,13 @@ const ListScreen: React.FC = () => {
           className={`mt-6 w-full py-3.5 rounded-2xl font-semibold transition-all flex items-center justify-center gap-1.5 ${ctaBtn} ${sizeSub}`}
         >
           <PenSquare className="w-5 h-5" />
-          {lang === 'en' ? 'New chat' : '새 대화 시작'}
+          {tr('새 대화 시작')}
         </button>
 
         {loading ? (
           <div className="mt-16 flex flex-col items-center gap-3 text-ink-3">
             <div className="w-8 h-8 border-[3px] border-line-base border-t-brand-500 rounded-full animate-spin" />
-            <p className="text-sm">{lang === 'en' ? 'Loading...' : '불러오는 중...'}</p>
+            <p className="text-sm">{tr('불러오는 중...')}</p>
           </div>
         ) : sessions.length === 0 ? (
           <div className={`mt-10 p-8 text-center ui-enter ${cardCls.replace('ui-card-interactive','ui-card')}`}>
@@ -128,10 +130,10 @@ const ListScreen: React.FC = () => {
               <MessageSquare className="w-7 h-7" />
             </div>
             <p className={`mt-5 text-lg font-semibold ${titleColor}`}>
-              {lang === 'en' ? 'No conversations yet' : '아직 대화가 없어요'}
+              {tr('아직 대화가 없어요')}
             </p>
             <p className={`mt-1.5 text-sm ${subtleColor}`}>
-              {lang === 'en' ? 'Ask the chatbot about any civil service' : '챗봇에게 민원에 대해 물어보세요'}
+              {tr('챗봇에게 민원에 대해 물어보세요')}
             </p>
           </div>
         ) : (
@@ -159,14 +161,14 @@ const ListScreen: React.FC = () => {
                     <span className={metaColor}>{timeAgo(s.updated_at, lang)}</span>
                     <span className={metaColor}>·</span>
                     <span className={metaColor}>
-                      {s.message_count} {lang === 'en' ? 'messages' : '개 메시지'}
+                      {s.message_count} {tr('개 메시지')}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={(e) => handleDelete(s.id, e)}
                   className={`shrink-0 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity ${isHighContrast ? 'text-zinc-400 hover:text-red-400 hover:bg-zinc-800' : 'text-ink-4 hover:text-danger hover:bg-danger/10'}`}
-                  aria-label={lang === 'en' ? 'Delete conversation' : '대화 삭제'}
+                  aria-label={tr('대화 삭제')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

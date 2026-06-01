@@ -12,7 +12,7 @@
  *   8. 자유 채팅 (/chat)
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Send, Mic, Sparkles, PenSquare, History, ChevronRight, ClipboardList, ExternalLink, ArrowLeft, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import TopSettings from '../components/TopSettings';
@@ -21,6 +21,7 @@ import { useTranslations } from '../lib/i18n';
 import { STRINGS as CHAT_STRINGS, type ChatStrings } from '../lib/strings/chat';
 import { type LangCode } from '../lib/languages';
 import { useAppLang, useAppContrast, useAppLargeFont } from '../lib/app-prefs';
+import { useT } from '../lib/use-t';
 import { normalizeOfficialLink } from '@/lib/url';
 import { getCategoryMeta, fromChatbotCategory, CATEGORY_META } from '@/lib/category';
 import { tUserType, tAgeGroup, tCategory } from '../lib/chat-options-i18n';
@@ -228,7 +229,8 @@ function ChecklistRenderer({
   );
 }
 
-export default function ChatPage() {
+// useSearchParams() 사용 — Suspense 래핑 필요. 아래 ChatPage가 wrapper.
+function ChatPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionParam = searchParams.get('session');
@@ -236,6 +238,7 @@ export default function ChatPage() {
   const [lang, setLang] = useAppLang();
   const [isHighContrast, setIsHighContrast] = useAppContrast();
   const [isLargeFont, setIsLargeFont] = useAppLargeFont();
+  const tr = useT();
 
   const [messages, setMessages] = useState<Msg[]>([]);
 
@@ -402,8 +405,8 @@ export default function ChatPage() {
           kind: 'text',
           role: 'assistant',
           content: services.length === 0
-            ? (lang === 'en' ? "I couldn't find a matching service. Try different details below." : '입력하신 상황에 맞는 민원을 찾지 못했습니다. 아래에서 자유롭게 질문해 주세요.')
-            : (lang === 'en' ? '📋 Here are the recommended services. Pick one to see details.' : '📋 맞춤 민원 추천 결과입니다. 자세히 알고 싶은 민원을 선택해 주세요.'),
+            ? tr('입력하신 상황에 맞는 민원을 찾지 못했습니다. 아래에서 자유롭게 질문해 주세요.')
+            : tr('📋 맞춤 민원 추천 결과입니다. 자세히 알고 싶은 민원을 선택해 주세요.'),
         },
         { kind: 'cards', role: 'assistant', services },
       ]);
@@ -467,7 +470,7 @@ export default function ChatPage() {
     if (!selectedService) return;
     setMessages(prev => [
       ...prev,
-      { kind: 'text', role: 'user', content: lang === 'en' ? '📝 Show checklist' : '📝 신청 체크리스트 보기' },
+      { kind: 'text', role: 'user', content: tr('📝 신청 체크리스트 보기') },
       { kind: 'thinking', role: 'assistant' },
     ]);
     setSending(true);
@@ -603,7 +606,7 @@ export default function ChatPage() {
     setStage('cards');
     setMessages(prev => [
       ...prev,
-      { kind: 'text', role: 'user', content: lang === 'en' ? '⬅️ Pick another service' : '⬅️ 다른 민원 선택' },
+      { kind: 'text', role: 'user', content: tr('⬅️ 다른 민원 선택') },
     ]);
   };
 
@@ -626,12 +629,12 @@ export default function ChatPage() {
             if (stage === 'step4') setDetailInput(prev => (prev ? prev + ' ' : '') + data.text);
             else setInput(prev => (prev ? prev + ' ' : '') + data.text);
           } else {
-            setSttError(lang === 'en' ? "Couldn't hear you. Try again?" : '음성을 인식하지 못했어요. 다시 시도해 주세요.');
+            setSttError(tr('음성을 인식하지 못했어요. 다시 시도해 주세요.'));
             setTimeout(() => setSttError(null), 5000);
           }
         } catch (e) {
           console.error('STT 실패:', e);
-          setSttError(lang === 'en' ? 'Voice recognition failed.' : '음성 인식에 실패했어요.');
+          setSttError(tr('음성 인식에 실패했어요.'));
           setTimeout(() => setSttError(null), 5000);
         }
         stream.getTracks().forEach(t => t.stop());
@@ -750,18 +753,18 @@ export default function ChatPage() {
   const inputEnabled = stage === 'freechat' || stage === 'checklist' || stage === 'detail';
   const inputPlaceholder = inputEnabled
     ? t.placeholder
-    : (lang === 'en' ? 'Pick an option above' : '위에서 선택해주세요');
+    : tr('위에서 선택해주세요');
 
   return (
     <div className={`fixed inset-x-0 top-0 bottom-16 flex flex-col ${pageBg}`}>
       <div className={`mx-auto w-full max-w-md sm:max-w-2xl flex flex-col h-full`}>
         <header className={`px-5 sm:px-8 py-3 border-b ${headerBorder} flex items-center justify-between gap-2`}>
           <div className="flex items-center gap-1">
-            <button onClick={handleNewChat} className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={lang === 'en' ? 'New chat' : '새 대화 시작'}>
+            <button onClick={handleNewChat} className={`flex items-center gap-1.5 -ml-2 px-3 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={tr('새 대화 시작')}>
               <PenSquare className="w-5 h-5" />
-              <span className="font-medium">{lang === 'en' ? 'New chat' : '새 대화'}</span>
+              <span className="font-medium">{tr('새 대화')}</span>
             </button>
-            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={lang === 'en' ? 'History' : '기록 보기'} title={lang === 'en' ? 'History' : '기록'}>
+            <button onClick={() => router.push('/list')} className={`flex items-center gap-1 px-2.5 py-2 rounded-lg transition-colors ${newChatBtn}`} aria-label={tr('기록 보기')} title={tr('기록')}>
               <History className="w-5 h-5" />
             </button>
           </div>
@@ -814,14 +817,14 @@ export default function ChatPage() {
               <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isHighContrast ? 'bg-zinc-800' : 'bg-blue-50'}`}>
                 <Sparkles className={`w-7 h-7 ${isHighContrast ? 'text-yellow-400' : 'text-blue-500'}`} />
               </div>
-              <p className={`mt-4 ${sizeBubble}`}>{lang === 'en' ? 'Preparing...' : '준비 중...'}</p>
+              <p className={`mt-4 ${sizeBubble}`}>{tr('준비 중...')}</p>
             </div>
           )}
 
           {messages.map((m, i) => {
             if (m.kind === 'text') {
               const isUser = m.role === 'user';
-              const displayContent = m.i18n ? (lang === 'en' ? m.i18n.en : m.i18n.ko) : m.content;
+              const displayContent = m.i18n ? tr(m.i18n.ko) : (m.role === 'assistant' ? tr(m.content) : m.content);
               if (isUser) {
                 return (
                   <div key={i} className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap leading-relaxed shadow-sm ${sizeBubble} ${userBubble} self-end rounded-tr-md`}>
@@ -841,7 +844,7 @@ export default function ChatPage() {
                     <div className="flex items-center gap-1 pl-1">
                       <button
                         onClick={() => sendFeedback(i, 'up')}
-                        aria-label="도움이 됐어요"
+                        aria-label={tr('도움이 됐어요')}
                         className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors active:scale-90 ${
                           rated === 'up'
                             ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-emerald-100 text-emerald-700')
@@ -852,7 +855,7 @@ export default function ChatPage() {
                       </button>
                       <button
                         onClick={() => sendFeedback(i, 'down')}
-                        aria-label="별로였어요"
+                        aria-label={tr('별로였어요')}
                         className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors active:scale-90 ${
                           rated === 'down'
                             ? (isHighContrast ? 'bg-yellow-400 text-black' : 'bg-rose-100 text-rose-700')
@@ -923,12 +926,12 @@ export default function ChatPage() {
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`rounded-2xl border shadow-sm p-4 ${botBubble}`}>
                     <p className={`text-sm ${subtleColor} mb-2`}>
-                      💡 {lang === 'en' ? 'Example: "My grandmother has trouble moving, and we want care at home."' : '예시: "할머니가 거동이 불편하셔서 집에서 돌봄 서비스를 받고 싶어요"'}
+                      💡 {tr('예시: "할머니가 거동이 불편하셔서 집에서 돌봄 서비스를 받고 싶어요"')}
                     </p>
                     <textarea
                       value={detailInput}
                       onChange={(e) => setDetailInput(e.target.value)}
-                      placeholder={lang === 'en' ? 'Describe your situation...' : '현재 어려움이나 필요한 서비스를 설명해 주세요...'}
+                      placeholder={tr('현재 어려움이나 필요한 서비스를 설명해 주세요...')}
                       rows={3}
                       disabled={!isActive || sending}
                       className={`w-full px-4 py-2.5 rounded-xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none disabled:opacity-50 ${inputBg} ${sizeBubble}`}
@@ -950,7 +953,7 @@ export default function ChatPage() {
                         onClick={isRecording ? stopRec : startRec}
                         disabled={!isActive || sending}
                         className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${micBtn}`}
-                        aria-label={isRecording ? (lang === 'en' ? 'Stop recording' : '녹음 중지') : (lang === 'en' ? 'Start voice input' : '음성 입력 시작')}
+                        aria-label={isRecording ? tr('녹음 중지') : tr('음성 입력 시작')}
                         aria-pressed={isRecording}
                       >
                         <Mic className="w-4 h-4" />
@@ -960,7 +963,7 @@ export default function ChatPage() {
                         disabled={!isActive || sending || !detailInput.trim()}
                         className={`flex-1 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`}
                       >
-                        {lang === 'en' ? '🔍 Analyze' : '🔍 분석하기'}
+                        {tr('🔍 분석하기')}
                       </button>
                     </div>
                   </div>
@@ -971,7 +974,7 @@ export default function ChatPage() {
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   {m.services.length === 0 ? (
-                    <p className={`${subtleColor} text-sm px-1`}>{lang === 'en' ? 'No matches.' : '결과가 없습니다.'}</p>
+                    <p className={`${subtleColor} text-sm px-1`}>{tr('결과가 없습니다.')}</p>
                   ) : (
                     <div className="flex flex-col gap-2">
                       {m.services.map((svc, idx) => {
@@ -1024,7 +1027,7 @@ export default function ChatPage() {
                                   className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold cursor-pointer ${isHighContrast ? 'text-yellow-400 hover:text-yellow-300' : 'text-brand-600 hover:text-brand-700'}`}
                                 >
                                   <ExternalLink className="w-3 h-3" />
-                                  {lang === 'en' ? 'Official page' : '공식 페이지'}
+                                  {tr('공식 페이지')}
                                 </span>
                               )}
                               </div>
@@ -1043,7 +1046,7 @@ export default function ChatPage() {
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-blue-100 text-blue-700'}`}>
-                    <Sparkles className="w-3.5 h-3.5" /> {m.serviceName} · {lang === 'en' ? 'Guide' : '민원 안내'}
+                    <Sparkles className="w-3.5 h-3.5" /> {m.serviceName} · {tr('민원 안내')}
                   </div>
                   <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
                     {renderRich(m.content)}
@@ -1055,7 +1058,7 @@ export default function ChatPage() {
                         disabled={sending}
                         className={`px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-50 ${sendBtn}`}
                       >
-                        {lang === 'en' ? '📝 Show checklist' : '📝 신청 체크리스트 보기'}
+                        {tr('📝 신청 체크리스트 보기')}
                       </button>
                       <button
                         onClick={goPickAnotherService}
@@ -1063,7 +1066,7 @@ export default function ChatPage() {
                         className={`px-4 py-2.5 rounded-xl font-semibold transition-colors disabled:opacity-50 ${exampleBtn}`}
                       >
                         <ArrowLeft className="w-4 h-4 inline mr-1" />
-                        {lang === 'en' ? 'Other service' : '다른 민원'}
+                        {tr('다른 민원')}
                       </button>
                     </div>
                   )}
@@ -1075,7 +1078,7 @@ export default function ChatPage() {
               return (
                 <div key={i} className="flex flex-col gap-2 self-start max-w-full w-full">
                   <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full self-start text-xs font-bold ${isHighContrast ? 'bg-zinc-800 text-yellow-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                    <ClipboardList className="w-3.5 h-3.5" /> {m.serviceName} · {lang === 'en' ? 'Checklist' : '체크리스트'}
+                    <ClipboardList className="w-3.5 h-3.5" /> {m.serviceName} · {tr('체크리스트')}
                   </div>
                   <div className={`w-full px-5 py-5 rounded-2xl rounded-tl-md shadow-sm border leading-loose ${botBubble} ${sizeRich}`}>
                     <ChecklistRenderer
@@ -1091,21 +1094,21 @@ export default function ChatPage() {
                     if (!officialUrl && !onlineUrl && !info.fee) return null;
                     return (
                       <div className={`rounded-2xl border p-4 ${isHighContrast ? 'bg-zinc-900 border-zinc-700' : 'bg-blue-50 border-blue-100'}`}>
-                        <p className={`text-sm font-bold mb-2 ${titleColor}`}>🔗 {lang === 'en' ? 'Useful links' : '유용한 링크'}</p>
+                        <p className={`text-sm font-bold mb-2 ${titleColor}`}>🔗 {tr('유용한 링크')}</p>
                         <div className="flex flex-col gap-1.5 text-sm">
                           {officialUrl && (
                             <a href={officialUrl} target="_blank" rel="noopener noreferrer"
                               className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                              🔗 {lang === 'en' ? 'Official' : '공식 사이트'} <ExternalLink className="w-3 h-3" />
+                              🔗 {tr('공식 사이트')} <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
                           {onlineUrl && (
                             <a href={onlineUrl} target="_blank" rel="noopener noreferrer"
                               className={`inline-flex items-center gap-1 ${isHighContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                              💻 {lang === 'en' ? 'Apply online' : '온라인 신청'} <ExternalLink className="w-3 h-3" />
+                              💻 {tr('온라인 신청')} <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
-                          {info.fee && <p className={subtleColor}>💰 {lang === 'en' ? 'Fee' : '수수료'}: {info.fee}</p>}
+                          {info.fee && <p className={subtleColor}>💰 {tr('수수료')}: {info.fee}</p>}
                         </div>
                       </div>
                     );
@@ -1129,7 +1132,7 @@ export default function ChatPage() {
                     <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-red-500"></span>
                   </span>
                   <span className={isHighContrast ? 'text-yellow-400 font-medium' : 'text-red-600 font-medium'}>
-                    {lang === 'en' ? 'Listening… tap mic to stop' : '듣는 중… 마이크를 다시 누르면 멈춰요'}
+                    {tr('듣는 중… 마이크를 다시 누르면 멈춰요')}
                   </span>
                 </>
               ) : (
@@ -1157,7 +1160,7 @@ export default function ChatPage() {
               className={`flex-1 resize-none px-4 py-2.5 rounded-2xl border outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50 ${inputBg} ${sizeBubble}`}
             />
             <button onClick={sendFreeChat} disabled={!inputEnabled || sending || !input.trim()}
-              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label={lang === 'en' ? 'Send message' : '메시지 보내기'}>
+              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center font-bold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${sendBtn}`} aria-label={tr('메시지 보내기')}>
               <Send className="w-5 h-5" />
             </button>
           </div>
@@ -1173,5 +1176,13 @@ export default function ChatPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChatPageInner />
+    </Suspense>
   );
 }

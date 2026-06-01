@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
 import { getEffectiveUserId } from '@/lib/auth';
+import { cachedTranslateBatch } from '@/lib/translate-cache';
 
 //  URL에서 괄호, 공백, 한글을 제거하고 순수 주소만 추출하는 안전장치 함수
 const getPureLink = (rawLink: string | null) => {
@@ -124,6 +125,36 @@ export async function GET(request : Request, {params} : {params: Promise<{servic
                     warning: warning
                 }
             });
+        }
+
+        // lang 적용 — step/doc 본문 자동 번역 (캐싱)
+        const url = new URL(request.url);
+        const lang = url.searchParams.get('lang') ?? 'ko';
+
+        if (lang !== 'ko') {
+            const stepTexts = steps.flatMap((s: any) => [s.title ?? '', s.description ?? '']);
+            const docTexts = documents.flatMap((d: any) => [d.title ?? '', d.description ?? '', d.institution ?? '']);
+            const overviewText = data.service_overview ?? '';
+            const eligibilityText = data.eligibility ?? '';
+            const allTexts = [...stepTexts, ...docTexts, overviewText, eligibilityText];
+            try {
+                const translated = await cachedTranslateBatch(allTexts, lang);
+                steps.forEach((s: any, i: number) => {
+                    s.title = translated[i * 2] || s.title;
+                    s.description = translated[i * 2 + 1] || s.description;
+                });
+                const stepCount = steps.length * 2;
+                documents.forEach((d: any, i: number) => {
+                    d.title = translated[stepCount + i * 3] || d.title;
+                    d.description = translated[stepCount + i * 3 + 1] || d.description;
+                    d.institution = translated[stepCount + i * 3 + 2] || d.institution;
+                });
+                const tailStart = stepCount + documents.length * 3;
+                data.service_overview = translated[tailStart] || data.service_overview;
+                data.eligibility = translated[tailStart + 1] || data.eligibility;
+            } catch (e) {
+                console.error('checklist i18n 실패:', e);
+            }
         }
 
         return NextResponse.json({
